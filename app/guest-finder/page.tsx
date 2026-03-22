@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { GuestFinderCard, PodcastSearchResult } from '@/lib/types';
 import { deduplicate, tierPodcasts } from '@/lib/guestFinder';
+import { exportGuestFinderCards } from '@/lib/exportCsv';
 import ClientDescriptionForm from '@/components/guest-finder/ClientDescriptionForm';
 import GuestFinderResults from '@/components/guest-finder/GuestFinderResults';
 import PodcastProfilePanel from '@/components/shared/PodcastProfilePanel';
@@ -93,11 +94,21 @@ export default function GuestFinderPage() {
         )}
 
         {!isLoading && cards.length > 0 && (
-          <GuestFinderResults
-            cards={cards}
-            onSelectPodcast={setSelectedCard}
-            selectedId={selectedCard?.podcastId ?? null}
-          />
+          <>
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => exportGuestFinderCards(cards, description)}
+                className="text-xs px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-100 text-gray-600"
+              >
+                Export CSV
+              </button>
+            </div>
+            <GuestFinderResults
+              cards={cards}
+              onSelectPodcast={setSelectedCard}
+              selectedId={selectedCard?.podcastId ?? null}
+            />
+          </>
         )}
       </div>
 

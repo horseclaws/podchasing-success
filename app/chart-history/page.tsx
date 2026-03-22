@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react';
 import { LeaderboardEntry, DailyChartEntry, CHART_CATEGORIES } from '@/lib/types';
 import { computeLeaderboard, dateRange, formatDate } from '@/lib/scoring';
+import { exportLeaderboard } from '@/lib/exportCsv';
 import MonthYearPicker from '@/components/chart-history/MonthYearPicker';
 import LeaderboardTable from '@/components/chart-history/LeaderboardTable';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -138,11 +139,21 @@ export default function ChartHistoryPage() {
         )}
 
         {leaderboard.length > 0 && (
-          <LeaderboardTable
-            entries={leaderboard}
-            onSelect={setSelectedEntry}
-            selectedId={selectedEntry?.id ?? null}
-          />
+          <>
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => exportLeaderboard(leaderboard, CHART_CATEGORIES.find(c => c.id === categoryId)?.displayName ?? 'all')}
+                className="text-xs px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-100 text-gray-600"
+              >
+                Export CSV
+              </button>
+            </div>
+            <LeaderboardTable
+              entries={leaderboard}
+              onSelect={setSelectedEntry}
+              selectedId={selectedEntry?.id ?? null}
+            />
+          </>
         )}
       </div>
 
