@@ -10,6 +10,7 @@ function headers() {
 // ---- Company Search ----
 
 export async function searchCompanies(name: string) {
+  // 1. Exact company name match
   const exact = await hubspotPost('/crm/v3/objects/companies/search', {
     filterGroups: [{
       filters: [{ propertyName: 'name', operator: 'EQ', value: name }],
@@ -17,9 +18,9 @@ export async function searchCompanies(name: string) {
     properties: ['name', 'domain'],
     limit: 10,
   });
-
   if (exact.results?.length > 0) return exact.results as HubSpotCompanyResult[];
 
+  // 2. Fuzzy company name match
   const fuzzy = await hubspotPost('/crm/v3/objects/companies/search', {
     filterGroups: [{
       filters: [{ propertyName: 'name', operator: 'CONTAINS_TOKEN', value: name }],
@@ -27,8 +28,52 @@ export async function searchCompanies(name: string) {
     properties: ['name', 'domain'],
     limit: 10,
   });
+  if (fuzzy.results?.length > 0) return fuzzy.results as HubSpotCompanyResult[];
 
-  return (fuzzy.results ?? []) as HubSpotCompanyResult[];
+  // 3. Contact name fallback — search contacts, return their associated companies
+  return searchCompaniesByContactName(name);
+}
+
+async function searchCompaniesByContactName(name: string): Promise<HubSpotCompanyResult[]> {
+  const parts = name.trim().split(/\s+/);
+  const filters = parts.length >= 2
+    ? [
+        { propertyName: 'firstname', operator: 'CONTAINS_TOKEN', value: parts[0] },
+        { propertyName: 'lastname', operator: 'CONTAINS_TOKEN', value: parts[parts.length - 1] },
+      ]
+    : [{ propertyName: 'lastname', operator: 'CONTAINS_TOKEN', value: name }];
+
+  const contacts = await hubspotPost('/crm/v3/objects/contacts/search', {
+    filterGroups: [{ filters }],
+    properties: ['firstname', 'lastname', 'email'],
+    limit: 5,
+  });
+
+  if (!contacts.results?.length) return [];
+
+  // Get companies associated with each contact
+  const companyIds = new Set<string>();
+  await Promise.all(
+    contacts.results.map(async (c: { id: string }) => {
+      try {
+        const assoc = await hubspotGet(`/crm/v3/objects/contacts/${c.id}/associations/companies`);
+        for (const r of assoc.results ?? []) companyIds.add(r.id);
+      } catch { /* skip */ }
+    })
+  );
+
+  if (companyIds.size === 0) return [];
+
+  const companies = await Promise.all(
+    [...companyIds].slice(0, 5).map((id) =>
+      hubspotGet(`/crm/v3/objects/companies/${id}?properties=name,domain`)
+    )
+  );
+
+  return companies.map((c) => ({
+    id: c.id,
+    properties: { name: c.properties.name ?? '', domain: c.properties.domain ?? null },
+  }));
 }
 
 interface HubSpotCompanyResult {
