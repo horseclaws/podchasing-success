@@ -131,7 +131,5 @@ export interface ClientReport {
   emails: HubSpotEmail[];
   healthTier: HealthTier;
   mixpanel: MixpanelUserActivity[];
-  chorus: null;
-  news: null;
   aiSummary: string;
 }

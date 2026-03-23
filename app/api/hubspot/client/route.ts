@@ -41,9 +41,6 @@ export async function POST(req: NextRequest) {
     // non-fatal
   }
 
-  const chorus = null;
-  const news = null;
-
   const companyName = company?.name ?? deal.properties.dealname;
   const companyId = company?.id ?? null;
   const domain = company?.domain ?? null;
@@ -89,8 +86,6 @@ export async function POST(req: NextRequest) {
     emails,
     healthTier,
     mixpanel,
-    chorus,
-    news,
     aiSummary,
     dealOwnerWarning: deal.properties.hubspot_owner_id !== session.user.hubspot_owner_id
       ? `This deal is owned by ${ownerName(deal.properties.hubspot_owner_id)}.`
