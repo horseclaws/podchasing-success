@@ -29,14 +29,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const rows = await sql`
-          SELECT id, name, email, password_hash, hubspot_owner_id, must_change_password
-          FROM users
-          WHERE email = ${credentials.email as string}
-        `;
+        let rows;
+        try {
+          rows = await sql`
+            SELECT id, name, email, password_hash, hubspot_owner_id, must_change_password
+            FROM users
+            WHERE email = ${credentials.email as string}
+          `;
+        } catch (error) {
+          console.error('Auth database error:', error);
+          return null;
+        }
 
         if (rows.length === 0) return null;
         const user = rows[0];
+
+        if (!user.password_hash) return null;
 
         const valid = await verifyPassword(credentials.password as string, user.password_hash);
         if (!valid) return null;
@@ -54,18 +62,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.hubspot_owner_id = (user as AppUser).hubspot_owner_id;
-        token.must_change_password = (user as AppUser).must_change_password;
+        const appUser = user as AppUser;
+        token.id = appUser.id;
+        token.hubspot_owner_id = appUser.hubspot_owner_id;
+        token.must_change_password = appUser.must_change_password;
       }
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string;
-        (session.user as AppUser & { id: string }).hubspot_owner_id = token.hubspot_owner_id as string;
-        (session.user as AppUser & { id: string }).must_change_password = token.must_change_password as boolean;
-      }
+      session.user.id = token.id;
+      session.user.hubspot_owner_id = token.hubspot_owner_id;
+      session.user.must_change_password = token.must_change_password;
       return session;
     },
   },
