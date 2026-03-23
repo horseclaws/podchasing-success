@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import {
-  fetchDealForCompany, fetchContactsForDeal,
+  fetchDealById, fetchCompanyForDeal, fetchContactsForDeal,
   fetchNotesForDeal, fetchEmailsForDeal, ownerName,
 } from '@/lib/hubspot';
 import { fetchMixpanelActivity, computeHealthTier } from '@/lib/mixpanel';
@@ -13,14 +13,16 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { companyId, companyName, domain = null } = await req.json();
-  if (!companyId) return NextResponse.json({ error: 'companyId required' }, { status: 400 });
-  if (!companyName) return NextResponse.json({ error: 'companyName required' }, { status: 400 });
+  const { dealId, companyId: _cid, domain: _domain } = await req.json();
+  if (!dealId) return NextResponse.json({ error: 'dealId required' }, { status: 400 });
 
-  let deal, contacts, notes, emails;
+  let deal, company, contacts, notes, emails;
   try {
-    deal = await fetchDealForCompany(companyId);
-    if (!deal) return NextResponse.json({ error: 'No Renewals-Pro deal found for this company' }, { status: 404 });
+    [deal, company] = await Promise.all([
+      fetchDealById(dealId),
+      fetchCompanyForDeal(dealId),
+    ]);
+    if (!deal) return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
     [contacts, notes, emails] = await Promise.all([
       fetchContactsForDeal(deal.id),
       fetchNotesForDeal(deal.id),
@@ -41,6 +43,10 @@ export async function POST(req: NextRequest) {
 
   const chorus = null;
   const news = null;
+
+  const companyName = company?.name ?? deal.properties.dealname;
+  const companyId = company?.id ?? null;
+  const domain = company?.domain ?? null;
 
   let aiSummary = '';
   try {

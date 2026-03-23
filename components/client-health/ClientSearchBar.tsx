@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 
-interface Company { id: string; name: string; domain: string | null }
+interface Company { id: string; name: string; domain: string | null; dealId: string | null }
 
 interface Props {
   onSelect: (company: Company) => void;
@@ -23,9 +23,13 @@ export default function ClientSearchBar({ onSelect }: Props) {
       body: JSON.stringify({ name: query }),
     });
     setLoading(false);
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
 
-    if (!res.ok || data.length === 0) {
+    if (!res.ok) {
+      setError(data?.error ? `Search error: ${data.error}` : 'No matching clients found in HubSpot. Check the name and try again.');
+      return;
+    }
+    if (!Array.isArray(data) || data.length === 0) {
       setError('No matching clients found in HubSpot. Check the name and try again.');
       return;
     }

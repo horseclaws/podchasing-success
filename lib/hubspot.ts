@@ -7,78 +7,40 @@ function headers() {
   };
 }
 
-// ---- Company Search ----
+// ---- Deal Search ----
+// CS reps search by deal name. We know the pipeline and active stages.
 
-export async function searchCompanies(name: string) {
-  // 1. Exact company name match
-  const exact = await hubspotPost('/crm/v3/objects/companies/search', {
+export async function searchCompanies(name: string): Promise<HubSpotCompanyResult[]> {
+  const token = name.trim().split(/[\s\-()]+/)
+    .filter(w => w.length > 3)
+    .sort((a, b) => b.length - a.length)[0] ?? name.trim();
+
+  const result = await hubspotPost('/crm/v3/objects/deals/search', {
     filterGroups: [{
-      filters: [{ propertyName: 'name', operator: 'EQ', value: name }],
+      filters: [
+        { propertyName: 'dealname', operator: 'CONTAINS_TOKEN', value: token },
+        { propertyName: 'pipeline', operator: 'EQ', value: PIPELINE_ID },
+        { propertyName: 'dealstage', operator: 'IN', values: VALID_STAGES },
+      ],
     }],
-    properties: ['name', 'domain'],
+    sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'DESCENDING' }],
+    properties: ['dealname'],
     limit: 10,
   });
-  if (exact.results?.length > 0) return exact.results as HubSpotCompanyResult[];
 
-  // 2. Fuzzy company name match
-  const fuzzy = await hubspotPost('/crm/v3/objects/companies/search', {
-    filterGroups: [{
-      filters: [{ propertyName: 'name', operator: 'CONTAINS_TOKEN', value: name }],
-    }],
-    properties: ['name', 'domain'],
-    limit: 10,
-  });
-  if (fuzzy.results?.length > 0) return fuzzy.results as HubSpotCompanyResult[];
+  if (!result.results?.length) return [];
 
-  // 3. Contact name fallback — search contacts, return their associated companies
-  return searchCompaniesByContactName(name);
-}
-
-async function searchCompaniesByContactName(name: string): Promise<HubSpotCompanyResult[]> {
-  const parts = name.trim().split(/\s+/);
-  const filters = parts.length >= 2
-    ? [
-        { propertyName: 'firstname', operator: 'CONTAINS_TOKEN', value: parts[0] },
-        { propertyName: 'lastname', operator: 'CONTAINS_TOKEN', value: parts[parts.length - 1] },
-      ]
-    : [{ propertyName: 'lastname', operator: 'CONTAINS_TOKEN', value: name }];
-
-  const contacts = await hubspotPost('/crm/v3/objects/contacts/search', {
-    filterGroups: [{ filters }],
-    properties: ['firstname', 'lastname', 'email'],
-    limit: 5,
-  });
-
-  if (!contacts.results?.length) return [];
-
-  // Get companies associated with each contact
-  const companyIds = new Set<string>();
-  await Promise.all(
-    contacts.results.map(async (c: { id: string }) => {
-      try {
-        const assoc = await hubspotGet(`/crm/v3/objects/contacts/${c.id}/associations/companies`);
-        for (const r of assoc.results ?? []) companyIds.add(r.id);
-      } catch { /* skip */ }
-    })
-  );
-
-  if (companyIds.size === 0) return [];
-
-  const companies = await Promise.all(
-    [...companyIds].slice(0, 5).map((id) =>
-      hubspotGet(`/crm/v3/objects/companies/${id}?properties=name,domain`)
-    )
-  );
-
-  return companies.map((c) => ({
-    id: c.id,
-    properties: { name: c.properties.name ?? '', domain: c.properties.domain ?? null },
+  return result.results.map((d: { id: string; properties: { dealname: string } }) => ({
+    id: d.id,
+    dealId: d.id,
+    properties: { name: d.properties.dealname ?? '', domain: null },
   }));
 }
 
 interface HubSpotCompanyResult {
   id: string;
   properties: { name: string; domain: string | null };
+  dealId?: string;
 }
 
 // ---- Deal Fetch ----
@@ -103,12 +65,25 @@ const ENTITLEMENT_PROPS = [
   'political_skew', 'list_making', 'seats', 'alerts',
 ];
 
-export async function fetchDealForCompany(companyId: string) {
-  const dealProps = [
-    'dealname', 'dealstage', 'pipeline', 'hubspot_owner_id',
-    'contract_start_date', 'contract_end_date', ...ENTITLEMENT_PROPS,
-  ];
+const DEAL_PROPS = [
+  'dealname', 'dealstage', 'pipeline', 'hubspot_owner_id',
+  'contract_start_date', 'contract_end_date', ...ENTITLEMENT_PROPS,
+];
 
+export async function fetchDealById(dealId: string) {
+  const props = DEAL_PROPS.join(',');
+  return hubspotGet(`/crm/v3/objects/deals/${dealId}?properties=${props}`);
+}
+
+export async function fetchCompanyForDeal(dealId: string): Promise<{ id: string; name: string; domain: string | null } | null> {
+  const assoc = await hubspotGet(`/crm/v3/objects/deals/${dealId}/associations/companies`);
+  const companyId = assoc.results?.[0]?.id;
+  if (!companyId) return null;
+  const c = await hubspotGet(`/crm/v3/objects/companies/${companyId}?properties=name,domain`);
+  return { id: companyId, name: c.properties.name ?? '', domain: c.properties.domain ?? null };
+}
+
+export async function fetchDealForCompany(companyId: string) {
   // Search for the most recently modified active deal in the Renewals-Pro pipeline
   const result = await hubspotPost('/crm/v3/objects/deals/search', {
     filterGroups: [{
@@ -119,7 +94,7 @@ export async function fetchDealForCompany(companyId: string) {
       ],
     }],
     sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'DESCENDING' }],
-    properties: dealProps,
+    properties: DEAL_PROPS,
     limit: 1,
   });
 
@@ -137,16 +112,18 @@ export async function fetchContactsForDeal(dealId: string) {
 
   const contacts = await Promise.all(
     contactIds.map((id) =>
-      hubspotGet(`/crm/v3/objects/contacts/${id}?properties=firstname,lastname,email,last_login_date`)
+      hubspotGet(`/crm/v3/objects/contacts/${id}?properties=firstname,lastname,email,last_login_date,pro_user`)
     )
   );
 
-  return contacts.map((c) => ({
-    id: c.id,
-    name: [c.properties.firstname, c.properties.lastname].filter(Boolean).join(' '),
-    email: c.properties.email ?? '',
-    lastLoginDate: c.properties.last_login_date ?? null,
-  }));
+  return contacts
+    .filter((c) => c.properties.pro_user === 'true')
+    .map((c) => ({
+      id: c.id,
+      name: [c.properties.firstname, c.properties.lastname].filter(Boolean).join(' '),
+      email: c.properties.email ?? '',
+      lastLoginDate: c.properties.last_login_date ?? null,
+    }));
 }
 
 // ---- Notes ----

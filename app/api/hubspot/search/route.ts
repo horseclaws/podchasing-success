@@ -9,8 +9,13 @@ export async function POST(req: NextRequest) {
   const { name } = await req.json();
   if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
 
-  const results = await searchCompanies(name);
-  return NextResponse.json(
-    results.map(r => ({ id: r.id, name: r.properties.name, domain: r.properties.domain }))
-  );
+  try {
+    const results = await searchCompanies(name);
+    return NextResponse.json(
+      results.map(r => ({ id: r.id, name: r.properties.name, domain: r.properties.domain, dealId: r.dealId ?? null }))
+    );
+  } catch (err) {
+    console.error('[search] searchCompanies threw:', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }

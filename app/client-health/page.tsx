@@ -4,7 +4,7 @@ import ClientSearchBar from '@/components/client-health/ClientSearchBar';
 import HealthReportView from '@/components/client-health/HealthReportView';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 
-interface Company { id: string; name: string; domain: string | null }
+interface Company { id: string; name: string; domain: string | null; dealId: string | null }
 
 export default function ClientHealthPage() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -21,7 +21,7 @@ export default function ClientHealthPage() {
     const res = await fetch('/api/hubspot/client', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companyId: company.id, companyName: company.name, domain: company.domain }),
+      body: JSON.stringify({ dealId: company.dealId ?? company.id }),
     });
     setLoading(false);
 
