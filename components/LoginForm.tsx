@@ -14,16 +14,21 @@ export default function LoginForm() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const result = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-    });
-    setLoading(false);
-    if (result?.error) {
-      setError('Invalid email or password.');
-    } else {
-      router.push('/client-health');
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
+      if (result?.error) {
+        setError('Invalid email or password.');
+      } else {
+        router.push('/client-health');
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
   }
 
