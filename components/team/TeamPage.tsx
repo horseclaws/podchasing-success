@@ -19,22 +19,39 @@ interface Props {
 
 export default function TeamPage({ members: initial, currentUserId }: Props) {
   const [members, setMembers] = useState(initial);
+  const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
-    const res = await fetch('/api/team');
-    const data = await res.json();
-    setMembers(data);
+    try {
+      const res = await fetch('/api/team');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data)) setMembers(data);
+    } catch {
+      // network error — keep existing list
+    }
   }, []);
 
   async function handleRemove(id: string) {
     if (!confirm('Remove this member?')) return;
-    await fetch(`/api/team/${id}`, { method: 'DELETE' });
-    await refresh();
+    try {
+      const res = await fetch(`/api/team/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Failed to remove member');
+        return;
+      }
+      setError('');
+      await refresh();
+    } catch {
+      setError('Network error removing member');
+    }
   }
 
   return (
     <div className="space-y-8 max-w-3xl">
       <h1 className="text-xl font-semibold text-gray-900">Team</h1>
+      {error && <p className="text-sm text-red-500">{error}</p>}
       <TeamMemberList members={members} currentUserId={currentUserId} onRemove={handleRemove} />
       <div className="border-t border-gray-200 pt-6">
         <AddMemberForm onAdded={refresh} />
