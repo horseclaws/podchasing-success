@@ -4,28 +4,6 @@ const ENDPOINT = 'https://api.minimax.io/v1/text/chatcompletion_v2';
 const MODEL = 'MiniMax-M2.5';
 const SYSTEM_PROMPT = 'You are an expert podcast PR agent.';
 
-async function chat(userMessage: string): Promise<string | null> {
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.MINIMAX_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userMessage },
-      ],
-    }),
-  });
-
-  const json = await res.json();
-  const text = json?.choices?.[0]?.message?.content;
-  if (typeof text !== 'string') return null;
-  return stripThinkingTags(text);
-}
-
 export async function callMiniMax(userMessage: string): Promise<string> {
   const res = await fetch(ENDPOINT, {
     method: 'POST',
@@ -46,6 +24,14 @@ export async function callMiniMax(userMessage: string): Promise<string> {
   const text = json?.choices?.[0]?.message?.content;
   if (typeof text !== 'string') throw new Error('MiniMax returned no content');
   return text;
+}
+
+async function chat(userMessage: string): Promise<string | null> {
+  try {
+    return stripThinkingTags(await callMiniMax(userMessage));
+  } catch {
+    return null;
+  }
 }
 
 export function stripThinkingTags(text: string): string {
