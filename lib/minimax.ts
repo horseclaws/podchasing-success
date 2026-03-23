@@ -26,7 +26,29 @@ async function chat(userMessage: string): Promise<string | null> {
   return stripThinkingTags(text);
 }
 
-function stripThinkingTags(text: string): string {
+export async function callMiniMax(userMessage: string): Promise<string> {
+  const res = await fetch(ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.MINIMAX_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userMessage },
+      ],
+    }),
+  });
+
+  const json = await res.json();
+  const text = json?.choices?.[0]?.message?.content;
+  if (typeof text !== 'string') throw new Error('MiniMax returned no content');
+  return text;
+}
+
+export function stripThinkingTags(text: string): string {
   let result = text;
   const openTag = '<think>';
   const closeTag = '</think>';
@@ -128,4 +150,42 @@ export async function generateGuestPatternSummary(
 
   const result = await chat(prompt);
   return (result ?? '').replace(/\*\*/g, '');
+}
+
+export async function generateClientSummary(data: {
+  companyName: string;
+  deal: {
+    stage: string;
+    contractEnd: string | null;
+    entitlements: Record<string, unknown>;
+  };
+  healthTier: string;
+  contacts: { name: string; email: string; lastLoginDate: string | null }[];
+  mixpanel: { email: string; events: Record<string, number>; topSearches: string[]; healthSignals: string[] }[];
+}): Promise<string> {
+  const prompt = `You are a Client Success intelligence assistant for Podchaser. Analyze this client data and provide a concise health summary.
+
+Company: ${data.companyName}
+Health Tier: ${data.healthTier}
+Deal Stage: ${data.deal.stage}
+Contract End: ${data.deal.contractEnd ?? 'unknown'}
+
+Feature Entitlements:
+${Object.entries(data.deal.entitlements).map(([k, v]) => `  ${k}: ${v}`).join('\n')}
+
+Pro Users:
+${data.contacts.map(c => `  ${c.name} (${c.email}) — last login: ${c.lastLoginDate ?? 'never'}`).join('\n')}
+
+Mixpanel Activity (60 days):
+${data.mixpanel.map(u => `  ${u.email}: ${JSON.stringify(u.events)} | searches: ${u.topSearches.join(', ')} | signals: ${u.healthSignals.join(', ')}`).join('\n')}
+
+Provide:
+1. Health tier confirmation with reasoning (cite specific user names and dates)
+2. Feature adoption gaps (entitlement enabled but usage = 0)
+3. 2-3 specific, actionable recommendations (reference actual user names and features)
+
+Rules: Health tiers are Active/Drifting/At Risk only. Never fabricate data. If data is missing, say so explicitly. No markdown formatting, no emojis.`;
+
+  const raw = await callMiniMax(prompt);
+  return stripThinkingTags(raw);
 }
