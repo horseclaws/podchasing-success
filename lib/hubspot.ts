@@ -40,33 +40,39 @@ interface HubSpotCompanyResult {
 
 const PIPELINE_ID = '10311743';
 
+// All valid active/renewal stages in the Renewals-Pro pipeline
+const VALID_STAGES = [
+  '10311744', '1236558246', '191321462', '10311745', '10311748',
+  '11544543', '10311746', '10311749', '10311750', '12714085',
+  '8879384', '1029795207',
+];
+
 const ENTITLEMENT_PROPS = [
   'brand_safety', 'sponsor_history', 'transcript_search', 'tell_me_why',
   'political_skew', 'list_making', 'seats', 'alerts',
 ];
 
 export async function fetchDealForCompany(companyId: string) {
-  const assoc = await hubspotGet(
-    `/crm/v3/objects/companies/${companyId}/associations/deals`
-  );
-
-  const dealIds: string[] = (assoc.results ?? []).map((r: { id: string }) => r.id);
-  if (dealIds.length === 0) return null;
-
   const dealProps = [
     'dealname', 'dealstage', 'pipeline', 'hubspot_owner_id',
     'contract_start_date', 'contract_end_date', ...ENTITLEMENT_PROPS,
   ];
 
-  for (const dealId of dealIds) {
-    const deal = await hubspotGet(
-      `/crm/v3/objects/deals/${dealId}?properties=${dealProps.join(',')}`
-    );
-    if (deal.properties?.pipeline === PIPELINE_ID) {
-      return deal;
-    }
-  }
-  return null;
+  // Search for the most recently modified active deal in the Renewals-Pro pipeline
+  const result = await hubspotPost('/crm/v3/objects/deals/search', {
+    filterGroups: [{
+      filters: [
+        { propertyName: 'associations.company', operator: 'EQ', value: companyId },
+        { propertyName: 'pipeline', operator: 'EQ', value: PIPELINE_ID },
+        { propertyName: 'dealstage', operator: 'IN', values: VALID_STAGES },
+      ],
+    }],
+    sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'DESCENDING' }],
+    properties: dealProps,
+    limit: 1,
+  });
+
+  return result.results?.[0] ?? null;
 }
 
 // ---- Contacts ----
