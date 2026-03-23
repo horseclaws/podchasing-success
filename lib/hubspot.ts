@@ -40,11 +40,17 @@ interface HubSpotCompanyResult {
 
 const PIPELINE_ID = '10311743';
 
-// All valid active/renewal stages in the Renewals-Pro pipeline
+// Active stages in the Renewals-Pro pipeline (excludes Renewed, Churned, MBG Loss)
 const VALID_STAGES = [
-  '10311744', '1236558246', '191321462', '10311745', '10311748',
-  '11544543', '10311746', '10311749', '10311750', '12714085',
-  '8879384', '1029795207',
+  '10311744', // Onboarding
+  '1236558246', // Money Back Window
+  '191321462', // Basic Pro
+  '10311745', // Engagement
+  '10311748', // At Risk
+  '11544543', // Monthly Renewal
+  '10311746', // Promised Renewal
+  '12714085', // Connect/API Deals
+  '8879384', // Paused/Feature Release
 ];
 
 const ENTITLEMENT_PROPS = [
