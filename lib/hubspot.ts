@@ -100,7 +100,7 @@ export async function fetchNotesForDeal(dealId: string) {
   const assoc = await hubspotGet(
     `/crm/v3/objects/deals/${dealId}/associations/notes`
   );
-  const noteIds: string[] = (assoc.results ?? []).map((r: { id: string }) => r.id).slice(0, 10);
+  const noteIds: string[] = (assoc.results ?? []).map((r: { id: string }) => r.id).slice(0, 20);
   if (noteIds.length === 0) return [];
 
   const notes = await Promise.all(
@@ -131,7 +131,7 @@ export async function fetchEmailsForDeal(dealId: string) {
   const assoc = await hubspotGet(
     `/crm/v3/objects/deals/${dealId}/associations/emails`
   );
-  const emailIds: string[] = (assoc.results ?? []).map((r: { id: string }) => r.id).slice(0, 10);
+  const emailIds: string[] = (assoc.results ?? []).map((r: { id: string }) => r.id).slice(0, 20);
   if (emailIds.length === 0) return [];
 
   const emails = await Promise.all(

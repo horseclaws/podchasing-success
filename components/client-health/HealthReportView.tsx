@@ -12,8 +12,10 @@ interface Props { report: Record<string, unknown>; onReset: () => void }
 export default function HealthReportView({ report, onReset }: Props) {
   const [saving, setSaving] = useState(false);
   const [savedNote, setSavedNote] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState('');
 
   async function saveNote() {
+    setSaveError('');
     setSaving(true);
     const res = await fetch('/api/hubspot/note', {
       method: 'POST',
@@ -27,10 +29,13 @@ export default function HealthReportView({ report, onReset }: Props) {
       }),
     });
     setSaving(false);
-    if (res.ok) {
+    if (!res.ok) {
       const data = await res.json();
-      setSavedNote(data.noteId);
+      setSaveError(data.error || 'Failed to save note to HubSpot');
+      return;
     }
+    const data = await res.json();
+    setSavedNote(data.noteId);
   }
 
   const deal = report.deal as Record<string, unknown>;
@@ -61,6 +66,7 @@ export default function HealthReportView({ report, onReset }: Props) {
           </button>
           <button onClick={onReset} className="text-xs text-gray-400 hover:text-gray-600">← New search</button>
         </div>
+        {saveError && <p className="text-xs text-red-500 mt-1">{saveError}</p>}
       </div>
 
       <FeatureEntitlements entitlements={deal.entitlements as Record<string, unknown>} />

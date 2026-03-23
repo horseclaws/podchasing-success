@@ -41,7 +41,7 @@ export default function ClientSearchBar({ onSelect }: Props) {
       <form onSubmit={search} className="flex gap-2 mb-4">
         <input
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={e => { setQuery(e.target.value); setError(''); }}
           placeholder="Search client by company name…"
           className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />

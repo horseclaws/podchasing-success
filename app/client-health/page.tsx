@@ -21,7 +21,7 @@ export default function ClientHealthPage() {
     const res = await fetch('/api/hubspot/client', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companyId: company.id, companyName: company.name }),
+      body: JSON.stringify({ companyId: company.id, companyName: company.name, domain: company.domain }),
     });
     setLoading(false);
 

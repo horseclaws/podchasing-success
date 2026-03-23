@@ -13,8 +13,9 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { companyId, companyName } = await req.json();
+  const { companyId, companyName, domain = null } = await req.json();
   if (!companyId) return NextResponse.json({ error: 'companyId required' }, { status: 400 });
+  if (!companyName) return NextResponse.json({ error: 'companyName required' }, { status: 400 });
 
   let deal, contacts, notes, emails;
   try {
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({
-    company: { id: companyId, name: companyName },
+    company: { id: companyId, name: companyName, domain },
     deal: {
       id: deal.id,
       name: deal.properties.dealname,

@@ -24,6 +24,10 @@ ${aiSummary}
 
 [CS Workspace health check by ${userName}.${ownerNote}]`;
 
-  const noteId = await writeHealthNote(dealId, body, session.user.hubspot_owner_id);
-  return NextResponse.json({ noteId });
+  try {
+    const noteId = await writeHealthNote(dealId, body, session.user.hubspot_owner_id);
+    return NextResponse.json({ noteId });
+  } catch (e) {
+    return NextResponse.json({ error: `Failed to save note: ${(e as Error).message}` }, { status: 502 });
+  }
 }
