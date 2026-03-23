@@ -71,3 +71,67 @@ export const CHART_CATEGORIES: ChartCategory[] = [
   { id: 'Health & Fitness', displayName: 'Health & Fitness' },
   { id: 'Arts', displayName: 'Arts' },
 ];
+
+// ============ Client Health ============
+
+export interface HubSpotDeal {
+  id: string;
+  name: string;
+  stage: string;
+  pipeline: string;
+  owner: string;
+  ownerName: string;
+  contractStart: string | null;
+  contractEnd: string | null;
+  entitlements: Record<string, boolean | string | number>;
+}
+
+export interface HubSpotContact {
+  id: string;
+  name: string;
+  email: string;
+  lastLoginDate: string | null;
+}
+
+export interface HubSpotNote {
+  id: string;
+  body: string;
+  timestamp: string;
+  isParrotBot: boolean;
+}
+
+export interface HubSpotEmail {
+  id: string;
+  subject: string;
+  body: string;
+  timestamp: string;
+}
+
+export interface HubSpotCompany {
+  id: string;
+  name: string;
+  domain: string | null;
+}
+
+export type HealthTier = 'Active' | 'Drifting' | 'At Risk';
+
+export interface MixpanelUserActivity {
+  email: string;
+  distinctId: string | null;
+  events: Record<string, number>;
+  topSearches: string[];
+  healthSignals: string[];
+}
+
+export interface ClientReport {
+  company: HubSpotCompany;
+  deal: HubSpotDeal;
+  contacts: HubSpotContact[];
+  notes: HubSpotNote[];
+  emails: HubSpotEmail[];
+  healthTier: HealthTier;
+  mixpanel: MixpanelUserActivity[];
+  chorus: null;
+  news: null;
+  aiSummary: string;
+}
