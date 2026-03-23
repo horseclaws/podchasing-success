@@ -1,6 +1,7 @@
 import { callMiniMax, stripThinkingTags } from './minimax';
 
-const BASE = 'https://chorus.ai/api/v1';
+const BASE_V1 = 'https://chorus.ai/api/v1';
+const BASE_V3 = 'https://chorus.ai/v3';
 
 function headers() {
   return {
@@ -25,43 +26,45 @@ export interface ChorusInsightsData {
   latestCallDate: string;
 }
 
+// searchChorusAccount is a pass-through — /v3/engagements queries by account_name directly,
+// no separate account ID lookup needed.
 export async function searchChorusAccount(companyName: string): Promise<string | null> {
-  try {
-    const data = await chorusGet(`/accounts?name=${encodeURIComponent(companyName)}`);
-    const accounts: Array<Record<string, unknown>> = data.accounts ?? data.results ?? data.data ?? [];
-    if (accounts.length === 0) return null;
-    const id = accounts[0].id ?? accounts[0].account_id;
-    return id != null ? String(id) : null;
-  } catch {
-    return null;
-  }
+  return companyName.trim() || null;
 }
 
-export async function fetchRecentCallTranscripts(accountId: string, limit: number): Promise<ChorusCall[]> {
-  // Chorus uses /conversations (not /calls) as the primary recording endpoint
-  const data = await chorusGet(`/conversations?account_id=${accountId}&limit=${limit}&sort=date_desc`);
-  const calls: Array<Record<string, unknown>> = data.conversations ?? data.calls ?? data.results ?? [];
+export async function fetchRecentCallTranscripts(accountName: string, limit: number): Promise<ChorusCall[]> {
+  const params = new URLSearchParams({
+    account_name: accountName,
+    engagement_type: 'meeting',
+    limit: String(limit),
+  });
+  const data = await chorusGetV3(`/engagements?${params}`);
+  const engagements: Array<Record<string, unknown>> = data.engagements ?? data.results ?? [];
 
   return Promise.all(
-    calls.map(async (c) => {
+    engagements.map(async (e) => {
+      const engagementId = String(e.engagement_id ?? e.id ?? '');
       let transcript = '';
       try {
-        const t = await chorusGet(`/conversations/${c.id}/transcript`);
-        if (Array.isArray(t.transcript)) {
-          transcript = t.transcript
-            .map((u: { text?: string; content?: string }) => u.text ?? u.content ?? '')
-            .join(' ');
-        } else {
-          transcript = String(t.transcript ?? t.text ?? '');
-        }
+        const t = await chorusGetV1(`/conversations/${engagementId}`);
+        const utterances: Array<{ snippet?: string }> =
+          t?.data?.attributes?.recording?.utterances ?? [];
+        transcript = utterances
+          .map((u) => u.snippet ?? '')
+          .filter(Boolean)
+          .join(' ');
       } catch {
-        // non-fatal: transcript unavailable for this call
+        // non-fatal: transcript unavailable for this engagement
       }
+      const rawDate = e.date_time ?? e.date ?? e.start_time ?? e.created_at ?? '';
+      const dateStr = typeof rawDate === 'number'
+        ? new Date(rawDate * 1000).toISOString()
+        : String(rawDate);
       return {
-        id: String(c.id),
-        date: String(c.date ?? c.created_at ?? c.start_time ?? ''),
-        durationSecs: Number(c.duration ?? c.duration_secs ?? 0),
-        participants: (c.participants as string[] | undefined) ?? [],
+        id: engagementId,
+        date: dateStr,
+        durationSecs: Number(e.duration ?? e.duration_secs ?? 0),
+        participants: (e.participants as string[] | undefined) ?? [],
         transcript: transcript.slice(0, 3000),
       };
     })
@@ -121,9 +124,16 @@ function parseInsights(text: string, callCount: number, latestCallDate: string):
   return { usage, frustrations, goals, callCount, latestCallDate };
 }
 
-async function chorusGet(path: string) {
+async function chorusGetV3(path: string) {
   if (!process.env.CHORUS_API_KEY) throw new Error('CHORUS_API_KEY is not set');
-  const res = await fetch(`${BASE}${path}`, { headers: headers() });
-  if (!res.ok) throw new Error(`Chorus GET ${path} failed: ${res.status}`);
+  const res = await fetch(`${BASE_V3}${path}`, { headers: headers() });
+  if (!res.ok) throw new Error(`Chorus GET ${BASE_V3}${path} failed: ${res.status}`);
+  return res.json();
+}
+
+async function chorusGetV1(path: string) {
+  if (!process.env.CHORUS_API_KEY) throw new Error('CHORUS_API_KEY is not set');
+  const res = await fetch(`${BASE_V1}${path}`, { headers: headers() });
+  if (!res.ok) throw new Error(`Chorus GET ${BASE_V1}${path} failed: ${res.status}`);
   return res.json();
 }
