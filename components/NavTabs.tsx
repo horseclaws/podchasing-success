@@ -3,8 +3,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const tabs = [
+  { href: '/client-health', label: 'Client Health' },
   { href: '/chart-history', label: 'Chart History' },
   { href: '/guest-finder', label: 'Guest Finder' },
+  { href: '/team', label: 'Team' },
 ];
 
 export default function NavTabs() {
