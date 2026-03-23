@@ -47,7 +47,7 @@ export default function HealthReportView({ report, onReset }: Props) {
           <p className="text-xs text-gray-400">
             Owner: {deal.ownerName as string} · Contract: {deal.contractStart as string ?? '?'} → {deal.contractEnd as string ?? '?'}
           </p>
-          {report.dealOwnerWarning && (
+          {!!report.dealOwnerWarning && (
             <p className="text-xs text-yellow-600 mt-1">{report.dealOwnerWarning as string}</p>
           )}
         </div>
