@@ -74,7 +74,7 @@ export default function HealthReportView({ report, onReset }: Props) {
         contacts={report.contacts as { name: string; email: string; lastLoginDate: string | null }[]}
         mixpanel={report.mixpanel as { email: string; events: Record<string, number>; topSearches: string[]; healthSignals: string[] }[]}
       />
-      <ChorusInsights data={null} />
+      <ChorusInsights companyName={company.name} />
       <RecentNews data={null} />
       <AISummary summary={report.aiSummary as string} />
     </div>
