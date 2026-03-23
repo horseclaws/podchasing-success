@@ -1,13 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-
-interface ChorusInsightsData {
-  usage: string[];
-  frustrations: string[];
-  goals: string[];
-  callCount: number;
-  latestCallDate: string;
-}
+import type { ChorusInsightsData } from '@/lib/chorus';
 
 interface Props {
   companyName: string;
@@ -48,6 +41,10 @@ export default function ChorusInsights({ companyName }: Props) {
     );
   }
 
+  const dateLabel = insights.latestCallDate
+    ? new Date(insights.latestCallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : 'unknown date';
+
   const sections: { label: string; items: string[]; color: string }[] = [
     { label: 'Usage signals', items: insights.usage, color: 'text-blue-700' },
     { label: 'Frustrations', items: insights.frustrations, color: 'text-red-600' },
@@ -58,7 +55,7 @@ export default function ChorusInsights({ companyName }: Props) {
     <div className="border border-gray-200 rounded p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-700">Call Insights</h3>
-        <span className="text-xs text-gray-400">{insights.callCount} call{insights.callCount !== 1 ? 's' : ''} · latest {new Date(insights.latestCallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+        <span className="text-xs text-gray-400">{insights.callCount} call{insights.callCount !== 1 ? 's' : ''} · latest {dateLabel}</span>
       </div>
       <div className="space-y-3">
         {sections.filter(s => s.items.length > 0).map(s => (
