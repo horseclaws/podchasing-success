@@ -14,6 +14,11 @@ export async function DELETE(
     return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
   }
 
-  await sql`DELETE FROM users WHERE id = ${id}`;
-  return NextResponse.json({ success: true });
+  try {
+    await sql`DELETE FROM users WHERE id = ${id}`;
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete user:', error);
+    return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
+  }
 }
