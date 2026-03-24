@@ -46,6 +46,8 @@ export async function annotateNewsRelevance(
     .map((a, i) => `${i + 1}. ${a.title} — ${a.snippet}`)
     .join('\n');
 
+  const exampleLines = articles.map((_, i) => `${i + 1}. [one sentence on how a CS rep could reference this news in an engagement email to the client]`).join('\n');
+
   const prompt = `You are a Client Success analyst helping CS reps write effective engagement emails to clients.
 
 Here are ${articles.length} recent news articles about ${companyName}:
@@ -53,16 +55,14 @@ Here are ${articles.length} recent news articles about ${companyName}:
 ${articleList}
 
 Respond with ONLY a numbered list in this exact format — no intro, no markdown, no extra text:
-1. [one sentence on how a CS rep could reference this news in an engagement email to the client]
-2. [one sentence...]
-${articles.map((_, i) => `${i + 1}. [...]`).slice(2).join('\n')}`;
+${exampleLines}`;
 
   try {
     const raw = await callMiniMax(prompt);
     const text = stripThinkingTags(raw);
     return parseRelevanceNotes(articles, text);
   } catch {
-    return articles.map((a) => ({ ...a, relevance: '', snippet: undefined as never }));
+    return articles.map(({ snippet: _snippet, ...rest }) => ({ ...rest, relevance: '' }));
   }
 }
 
