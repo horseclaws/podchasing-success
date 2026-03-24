@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const company = new URL(req.url).searchParams.get('company');
-  if (!company) return NextResponse.json({ articles: null });
+  if (!company) return NextResponse.json({ articles: null }, { status: 200 });
 
   try {
     const raw = await fetchCompanyNews(company, 5);
