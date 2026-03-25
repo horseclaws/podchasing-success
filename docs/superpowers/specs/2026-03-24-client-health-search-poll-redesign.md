@@ -109,11 +109,15 @@ function scoreDealSet(deals: RawDealResult[]): DealResult[] {
 }
 ```
 
-Edge cases (all handled by code above):
+**Renewal scoring behavior (stated explicitly):**
+- Mixed set (some past due, some future): past-due deals get `scoreRenewal = 100`; future deals get `norm(maxRenewal - daysUntilRenewal[i], maxRenewal)` where the deal with `daysUntilRenewal = maxRenewal` (furthest out) scores 0 and the deal renewing soonest scores highest. This is correct and intentional.
+- All past-due set: `maxRenewal ≤ 0` → all get `scoreRenewal = 100`. Differentiation comes from value and contact components.
+- All same future date: all `daysUntilRenewal[i] = maxRenewal` → all score 0 for renewal. Differentiation comes from other components. This is intentional — equal renewal urgency contributes equally (0 differential).
+
+Edge cases:
 - Null `amount` / `lastContactedDate` / `contractEndDate` → that component scores 0; card displays `—`.
-- All deals have the same non-null value → max equals every value → all score 100 for that component (ties; other components differentiate).
-- All deals past their contract end date → `maxRenewal ≤ 0` → all get `scoreRenewal = 100`.
-- Single-result set → all components normalize to 100 → `totalScore = 300`.
+- All deals past their contract end date → all get `scoreRenewal = 100`.
+- Single-result set → all three components are at their respective maxima → `totalScore = 300`.
 
 **Render cap:** `DealResultsList` renders the top 50 deals (after scoring sort). For search (≤20) this is all results; for poll (≤100) this caps the list at 50.
 
@@ -129,28 +133,32 @@ Shown above the results list whenever results are present. Three tiles:
 2. **By Business Type** — list of `business_type` values with counts, e.g. `Podcast Network: 6 · Brand: 3 · Agency: 2`.
 3. **By Deal Stage** — list of `dealstage` values with counts.
 
-Both distribution tiles show a simple color-bar per category. Bars are proportional relative to the largest category (largest = full width). Cycle through brand colors `#4A027D → #0DAAC9 → #2BDA9F → #FB0467` for each category row. No minimum bar width — very small categories may appear as a thin sliver. No pie charts.
+Both distribution tiles show a simple color-bar per category. Bars are proportional relative to the largest category (largest = full width). Cycle through brand colors `#4A027D → #0DAAC9 → #2BDA9F → #FB0467` for each category row; for 5+ categories, wrap back to `#4A027D`. No minimum bar width — very small categories may appear as a thin sliver. No pie charts.
+
+Null or empty-string values for `businessType` or `stage` are grouped under the label `"Unknown"` and included in the distribution counts.
 
 ---
 
 ## API
 
-### Shared type: `DealResult`
-
-Both endpoints return arrays of this type. Scoring fields are added client-side after the API responds.
+### Shared types
 
 ```ts
-interface DealResult {
+// Raw shape returned by both API endpoints
+interface RawDealResult {
   id: string;
   name: string;
   stage: string;
   pipeline: string;
   amount: number | null;
   contractEndDate: string | null;       // ISO date string
-  lastContactedDate: string | null;     // ISO date string (notes_last_contacted)
+  lastContactedDate: string | null;     // ISO date string (maps to notes_last_contacted)
   businessType: string | null;
   company: { id: string | null; name: string; domain: string | null };
-  // Added client-side after normalization:
+}
+
+// After client-side scoring is applied
+interface DealResult extends RawDealResult {
   scoreValue: number;        // 0–100
   scoreContact: number;      // 0–100
   scoreRenewal: number;      // 0–100
@@ -162,13 +170,15 @@ interface DealResult {
 
 Currently this endpoint searches companies (via `searchCompanies` in `lib/hubspot.ts`) and returns `{ id, name, domain, dealId }[]`. It is only called from `ClientSearchBar` — no other consumers.
 
-**Change:** Replace company search with deal search. Return an array of up to 20 raw `DealResult` objects (score fields are added client-side):
+**Change:** Replace company search with deal search. Return an array of up to 20 `RawDealResult` objects:
 
 ```ts
-{ deals: Omit<DealResult, 'scoreValue' | 'scoreContact' | 'scoreRenewal' | 'totalScore'>[] }
+{ deals: RawDealResult[] }
 ```
 
-The `DealResult.id` field is the deal ID — used by the page to call `/api/hubspot/client` when a deal is selected (same pattern as today's `company.dealId`).
+The `RawDealResult.id` field is the deal ID — used by the page to call `/api/hubspot/client` when a deal is selected (same pattern as today's `company.dealId`).
+
+**Before changing the response shape:** audit all usages of `POST /api/hubspot/search` in the codebase to confirm no other callers exist. The only known caller is `ClientSearchBar.tsx`, but verify with a grep before modifying the API. Also update `ClientSearchBar`'s internal parsing to use the new `{ deals: RawDealResult[] }` shape instead of the old flat array.
 
 ### New: `POST /api/hubspot/poll`
 
@@ -178,7 +188,7 @@ The `DealResult.id` field is the deal ID — used by the page to call `/api/hubs
 
 // Response — same raw deal shape as search (scores computed client-side)
 {
-  deals: Omit<DealResult, 'scoreValue' | 'scoreContact' | 'scoreRenewal' | 'totalScore'>[];
+  deals: RawDealResult[];
 }
 ```
 
@@ -234,9 +244,14 @@ const [selectedDeal, setSelectedDeal] = useState<DealResult | null>(null);
 
 When a result is selected, the page calls `/api/hubspot/client` with `dealId: selectedDeal.id` (same pattern as today), then renders `HealthReportView` in place of the list (results and dashboard are hidden).
 
-`HealthReportView` already accepts an `onReset: () => void` prop — this is the back/close mechanism. No new prop is needed. The page passes `onReset={() => setSelectedDeal(null)}`. When triggered (back button or the existing save/close flow), `selectedDeal` is set to null and the results list is restored exactly as it was — `mode`, `results`, active poll highlight, and search query text are all preserved (none are cleared on reset).
+`HealthReportView` already accepts an `onReset: () => void` prop (confirmed in source at `components/client-health/HealthReportView.tsx` line 10) — no new prop is needed. The page passes `onReset={() => setSelectedDeal(null)}`. When triggered (back button or the existing save/close flow), `selectedDeal` is set to null and the results list is restored exactly as it was — `mode`, `results`, active poll highlight, and search query text are all preserved (none are cleared on reset).
 
-**Search trigger:** `ClientSearchBar` fires on form submit (Enter key or button click). This is unchanged from today. The poll highlight (`mode`) clears when search results are returned — not on keystroke.
+**Search trigger:** `ClientSearchBar` fires on form submit (Enter key or button click). This is unchanged from today. When a poll button is clicked, the search query text in the input is **preserved** (not cleared) — only the results and active mode change. When a search is submitted, the active poll highlight clears (mode becomes `'search'`).
+
+**Loading state UI:** While `loading` is true:
+- Show a spinner/loading indicator in the list area (reuse the existing `LoadingSpinner` component).
+- Hide the dashboard.
+- Disable the poll buttons and the search submit button so the user cannot trigger a second fetch.
 
 ---
 
