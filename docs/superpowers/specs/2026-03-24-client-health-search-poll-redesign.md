@@ -131,7 +131,7 @@ Shown above the results list whenever results are present. Three tiles:
 
 1. **Total Contract Value** — sum of `amount` across all results, formatted as `$347,500` (full integer with commas, no abbreviation).
 2. **By Business Type** — list of `business_type` values with counts, e.g. `Podcast Network: 6 · Brand: 3 · Agency: 2`.
-3. **By Deal Stage** — list of `dealstage` values with counts.
+3. **By Deal Stage** — list of deal stage **labels** (human-readable, via `stageLabel()`) with counts. Aggregation happens after label mapping.
 
 Both distribution tiles show a simple color-bar per category. Bars are proportional relative to the largest category (largest = full width). Cycle through brand colors `#4A027D → #0DAAC9 → #2BDA9F → #FB0467` for each category row; for 5+ categories, wrap back to `#4A027D`. No minimum bar width — very small categories may appear as a thin sliver. No pie charts.
 
@@ -249,6 +249,40 @@ app/client-health/page.tsx          ← orchestrates state: results, activeMode,
   HealthReportView                  ← existing: shown when selectedDeal is set
 ```
 
+### Component props
+
+```ts
+// ClientSearchBar — modified
+interface ClientSearchBarProps {
+  onResults: (deals: RawDealResult[]) => void;  // called with [] on empty results
+  disabled?: boolean;                           // true while loading
+}
+
+// PollButtons — new
+interface PollButtonsProps {
+  activeMode: Mode;
+  disabled: boolean;
+  onPoll: (type: 'renew_30' | 'renew_60' | 'contacted_45') => void;
+}
+
+// ResultsDashboard — new
+interface ResultsDashboardProps {
+  deals: DealResult[];  // scored, full result set (not capped)
+}
+
+// DealResultsList — new
+interface DealResultsListProps {
+  deals: DealResult[];  // scored; component slices to top 50 internally
+  onSelect: (deal: DealResult) => void;
+}
+
+// DealResultCard — new
+interface DealResultCardProps {
+  deal: DealResult;
+  onSelect: () => void;
+}
+```
+
 ### Files
 
 | Action | Path |
@@ -282,14 +316,20 @@ When a result is selected, the page calls `/api/hubspot/client` with `dealId: se
 
 `HealthReportView` already accepts an `onReset: () => void` prop (confirmed in source at `components/client-health/HealthReportView.tsx` line 10) — no new prop is needed. The page passes `onReset={() => setSelectedDeal(null)}`. When triggered (back button or the existing save/close flow), `selectedDeal` is set to null and the results list is restored exactly as it was — `mode`, `results`, active poll highlight, and search query text are all preserved (none are cleared on reset).
 
+**Search query state:** `ClientSearchBar` manages its own `query` state internally (existing behavior). The parent does not need to lift or control this value. Text is preserved naturally across poll clicks since the search component is never remounted.
+
 **Search trigger:** `ClientSearchBar` fires on form submit (Enter key or button click). This is unchanged from today. When a poll button is clicked, the search query text in the input is **preserved** (not cleared) — only the results and active mode change. When a search is submitted, the active poll highlight clears (mode becomes `'search'`).
 
-**Poll button active state:** When a poll button is clicked, highlight it immediately (before results arrive). The highlight persists during loading and until the user submits a search.
+**Poll button active state:** When a poll button is clicked, highlight it **immediately** (before results arrive, before loading completes). The highlighted button also becomes visually inactive (un-highlighted) when a search is submitted. Each poll button conditionally renders its highlighted style based on `mode === 'poll_renew_30'` etc.
 
-**Loading state UI:** While `loading` is true:
+**Loading state UI:** While `loading` is true, the UI transitions **immediately** (no delay):
 - Show a spinner/loading indicator in the list area (reuse the existing `LoadingSpinner` component).
-- Hide the dashboard.
+- Hide the dashboard immediately (not after results arrive).
 - Disable the poll buttons and the search submit button so the user cannot trigger a second fetch.
+
+**Re-fetching:** No caching. If the user clicks a poll button they already clicked, the page re-fetches. Results state is always replaced by the most recent fetch.
+
+**Render cap:** `DealResultsList` slices the scored+sorted array to 50 items client-side before rendering. No "showing N of X" indicator — this is an internal cap, not a pagination feature.
 
 **Null amount in dashboard:** Deals with `amount = null` contribute `$0` to the total contract value. No warning is shown.
 
