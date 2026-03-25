@@ -57,26 +57,65 @@ Each deal in a result set receives a score from 0–300. All three components ar
 
 **Formula:**
 
+```typescript
+// Safe normalization — returns 0 when max is 0 (avoids divide-by-zero)
+function norm(value: number, max: number): number {
+  return max > 0 ? (value / max) * 100 : 0;
+}
+
+// Days until contract end — negative means past due; null contractEndDate → undefined
+function daysUntilRenewal(deal: RawDealResult): number | null {
+  if (!deal.contractEndDate) return null;
+  return Math.round((new Date(deal.contractEndDate).getTime() - Date.now()) / 86400000);
+}
+
+function scoreDealSet(deals: RawDealResult[]): DealResult[] {
+  const amounts       = deals.map(d => d.amount ?? 0);
+  const contactDays   = deals.map(d => d.lastContactedDate
+    ? Math.round((Date.now() - new Date(d.lastContactedDate).getTime()) / 86400000)
+    : 0);
+  const renewalDays   = deals.map(d => daysUntilRenewal(d));   // null if no date
+
+  const maxAmount     = Math.max(...amounts);
+  const maxContact    = Math.max(...contactDays);
+
+  // For renewal: use only deals with a contractEndDate to find the max future days.
+  // If ALL deals with dates are past due (all renewalDays ≤ 0), max ≤ 0 → all get 100.
+  const validRenewal  = renewalDays.filter((d): d is number => d !== null);
+  const maxRenewal    = validRenewal.length > 0 ? Math.max(...validRenewal) : null;
+
+  return deals.map((deal, i) => {
+    const scoreValue   = norm(amounts[i],     maxAmount);
+    const scoreContact = norm(contactDays[i], maxContact);
+
+    let scoreRenewal: number;
+    if (renewalDays[i] === null) {
+      scoreRenewal = 0;                                    // no date → 0 pts
+    } else if (maxRenewal === null || maxRenewal <= 0) {
+      scoreRenewal = 100;                                  // all past due → all max urgency
+    } else {
+      scoreRenewal = Math.min(100, Math.max(0,
+        norm(maxRenewal - renewalDays[i], maxRenewal)));
+    }
+
+    return {
+      ...deal,
+      scoreValue:   Math.round(scoreValue),
+      scoreContact: Math.round(scoreContact),
+      scoreRenewal: Math.round(scoreRenewal),
+      totalScore:   Math.round(scoreValue + scoreContact + scoreRenewal),
+    };
+  }).sort((a, b) => b.totalScore - a.totalScore);
+}
 ```
-// Safe normalization helper — returns 0 when max is 0 (all values null/same)
-function norm(value, max) { return max > 0 ? (value / max) * 100 : 0; }
 
-// Per-deal, using days as integers:
-valueScore      = norm(amount ?? 0,           max(amounts in set))
-contactScore    = norm(daysSinceContact ?? 0, max(daysSinceContact in set))
-renewalScore    = clamp(norm(maxDaysUntilRenewal - daysUntilRenewal,
-                             maxDaysUntilRenewal), 0, 100)
-                  // daysUntilRenewal is negative for past-due deals → clamp pushes to 100
-                  // if ALL deals in set are past due, maxDaysUntilRenewal ≤ 0 → norm returns 0
-                  //   → every deal gets renewalScore = 100 (all equally past due)
+Edge cases (all handled by code above):
+- Null `amount` / `lastContactedDate` / `contractEndDate` → that component scores 0; card displays `—`.
+- All deals have the same non-null value → max equals every value → all score 100 for that component (ties; other components differentiate).
+- All deals past their contract end date → `maxRenewal ≤ 0` → all get `scoreRenewal = 100`.
+- Single-result set → all components normalize to 100 → `totalScore = 300`.
 
-totalScore = round(valueScore + contactScore + renewalScore)
-```
-
-Edge cases:
-- `amount` / `lastContactedDate` / `contractEndDate` null → that component's value is treated as 0, contributing 0 pts to the score. Display `—` in the card.
-- All deals in the set share the same non-null value for a component → max equals every value → all scores for that component are 100 (ties are intentional; relative ranking within ties falls to the other components).
-- Single-result sets: all three components score 100 → totalScore = 300 for the only deal.
+**Render cap:** `DealResultsList` renders the top 50 deals (after scoring sort). For search (≤20) this is all results; for poll (≤100) this caps the list at 50.
 
 Results sorted descending by `totalScore`.
 
@@ -90,7 +129,7 @@ Shown above the results list whenever results are present. Three tiles:
 2. **By Business Type** — list of `business_type` values with counts, e.g. `Podcast Network: 6 · Brand: 3 · Agency: 2`.
 3. **By Deal Stage** — list of `dealstage` values with counts.
 
-Both distribution tiles show a simple color-bar per category. No pie charts — scannable text with proportional bars.
+Both distribution tiles show a simple color-bar per category. Bars are proportional relative to the largest category (largest = full width). Cycle through brand colors `#4A027D → #0DAAC9 → #2BDA9F → #FB0467` for each category row. No minimum bar width — very small categories may appear as a thin sliver. No pie charts.
 
 ---
 
@@ -121,11 +160,15 @@ interface DealResult {
 
 ### Existing: `POST /api/hubspot/search`
 
-Currently returns a single deal. Change to return an **array** of up to 20 `DealResult` objects (without score fields — those are computed client-side). The response shape:
+Currently this endpoint searches companies (via `searchCompanies` in `lib/hubspot.ts`) and returns `{ id, name, domain, dealId }[]`. It is only called from `ClientSearchBar` — no other consumers.
+
+**Change:** Replace company search with deal search. Return an array of up to 20 raw `DealResult` objects (score fields are added client-side):
 
 ```ts
 { deals: Omit<DealResult, 'scoreValue' | 'scoreContact' | 'scoreRenewal' | 'totalScore'>[] }
 ```
+
+The `DealResult.id` field is the deal ID — used by the page to call `/api/hubspot/client` when a deal is selected (same pattern as today's `company.dealId`).
 
 ### New: `POST /api/hubspot/poll`
 
@@ -189,7 +232,11 @@ const [loading, setLoading] = useState(false);
 const [selectedDeal, setSelectedDeal] = useState<DealResult | null>(null);
 ```
 
-When a result is selected, `HealthReportView` renders in place of the list (results and dashboard are hidden). A back button at the top of `HealthReportView` sets `selectedDeal` to null, restoring the results list exactly as it was — `mode`, `results`, active poll highlight, and search query text are all preserved. The existing close/save flow in `HealthReportView` also triggers the same return-to-list behavior.
+When a result is selected, the page calls `/api/hubspot/client` with `dealId: selectedDeal.id` (same pattern as today), then renders `HealthReportView` in place of the list (results and dashboard are hidden).
+
+`HealthReportView` already accepts an `onReset: () => void` prop — this is the back/close mechanism. No new prop is needed. The page passes `onReset={() => setSelectedDeal(null)}`. When triggered (back button or the existing save/close flow), `selectedDeal` is set to null and the results list is restored exactly as it was — `mode`, `results`, active poll highlight, and search query text are all preserved (none are cleared on reset).
+
+**Search trigger:** `ClientSearchBar` fires on form submit (Enter key or button click). This is unchanged from today. The poll highlight (`mode`) clears when search results are returned — not on keystroke.
 
 ---
 
