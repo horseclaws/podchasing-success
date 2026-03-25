@@ -141,20 +141,54 @@ Null or empty-string values for `businessType` or `stage` are grouped under the 
 
 ## API
 
+### HubSpot property notes
+
+The following deal properties must be added to `DEAL_PROPS` in `lib/hubspot.ts` (they are not currently fetched):
+- `notes_last_contacted` — standard HubSpot property, last date a note/activity was logged
+- `business_type` — custom deal property already assigned to all deals
+- `amount` — standard HubSpot property (deal value)
+
+Also add these to the properties list in `searchCompanies` (now `searchDeals`) and in the new poll query.
+
+**Stage ID → label mapping** (already defined as comments in `lib/hubspot.ts`, extract into a helper):
+
+```ts
+const STAGE_LABELS: Record<string, string> = {
+  '10311744':   'Onboarding',
+  '1236558246': 'Money Back Window',
+  '191321462':  'Basic Pro',
+  '10311745':   'Engagement',
+  '10311748':   'At Risk',
+  '11544543':   'Monthly Renewal',
+  '10311746':   'Promised Renewal',
+  '12714085':   'Connect/API Deals',
+  '8879384':    'Paused/Feature Release',
+};
+export function stageLabel(stageId: string): string {
+  return STAGE_LABELS[stageId] ?? stageId;
+}
+```
+
+Use `stageLabel()` in the API responses and dashboard.
+
+### Company data in list results
+
+Fetching company associations for every deal in a poll (up to 100 deals) would require 100 individual API calls. This is too expensive. **Do not fetch company data for list results.** The `DealResultCard` displays the deal name as the primary identifier. The `company` field in `RawDealResult` is populated only when association data is already available (e.g., from the deals search response `associations` field if HubSpot returns it inline); otherwise it defaults to `{ id: null, name: '', domain: null }`. Full company data is loaded by `/api/hubspot/client` when the user clicks a result.
+
 ### Shared types
 
 ```ts
 // Raw shape returned by both API endpoints
 interface RawDealResult {
-  id: string;
-  name: string;
-  stage: string;
+  id: string;                           // HubSpot deal ID
+  name: string;                         // dealname — used as primary display in list cards
+  stage: string;                        // stageLabel(dealstage) — human-readable
   pipeline: string;
-  amount: number | null;
-  contractEndDate: string | null;       // ISO date string
-  lastContactedDate: string | null;     // ISO date string (maps to notes_last_contacted)
-  businessType: string | null;
-  company: { id: string | null; name: string; domain: string | null };
+  amount: number | null;                // amount (deal value)
+  contractEndDate: string | null;       // contract_end_date — ISO date string
+  lastContactedDate: string | null;     // notes_last_contacted — ISO date string
+  businessType: string | null;          // business_type
+  company: { id: string | null; name: string; domain: string | null };  // empty for list results; see above
 }
 
 // After client-side scoring is applied
@@ -165,6 +199,8 @@ interface DealResult extends RawDealResult {
   totalScore: number;        // 0–300
 }
 ```
+
+`selectedDeal` in page state is of type `DealResult` (already scored, drawn from the `results` array).
 
 ### Existing: `POST /api/hubspot/search`
 
@@ -178,7 +214,7 @@ Currently this endpoint searches companies (via `searchCompanies` in `lib/hubspo
 
 The `RawDealResult.id` field is the deal ID — used by the page to call `/api/hubspot/client` when a deal is selected (same pattern as today's `company.dealId`).
 
-**Before changing the response shape:** audit all usages of `POST /api/hubspot/search` in the codebase to confirm no other callers exist. The only known caller is `ClientSearchBar.tsx`, but verify with a grep before modifying the API. Also update `ClientSearchBar`'s internal parsing to use the new `{ deals: RawDealResult[] }` shape instead of the old flat array.
+**Before changing the response shape:** grep the codebase for `/api/hubspot/search` to confirm no other callers exist. If other callers are found, create a new endpoint `/api/hubspot/search-deals` and leave the original unchanged. The only known caller is `ClientSearchBar.tsx` — update it to use the new `{ deals: RawDealResult[] }` shape instead of the old flat array.
 
 ### New: `POST /api/hubspot/poll`
 
@@ -248,10 +284,14 @@ When a result is selected, the page calls `/api/hubspot/client` with `dealId: se
 
 **Search trigger:** `ClientSearchBar` fires on form submit (Enter key or button click). This is unchanged from today. When a poll button is clicked, the search query text in the input is **preserved** (not cleared) — only the results and active mode change. When a search is submitted, the active poll highlight clears (mode becomes `'search'`).
 
+**Poll button active state:** When a poll button is clicked, highlight it immediately (before results arrive). The highlight persists during loading and until the user submits a search.
+
 **Loading state UI:** While `loading` is true:
 - Show a spinner/loading indicator in the list area (reuse the existing `LoadingSpinner` component).
 - Hide the dashboard.
 - Disable the poll buttons and the search submit button so the user cannot trigger a second fetch.
+
+**Null amount in dashboard:** Deals with `amount = null` contribute `$0` to the total contract value. No warning is shown.
 
 ---
 
