@@ -58,15 +58,27 @@ Each deal in a result set receives a score from 0–300. All three components ar
 **Formula:**
 
 ```
-valueScore      = (amount / maxAmount) * 100
-contactScore    = (daysSinceContact / maxDaysSinceContact) * 100
-renewalScore    = ((maxDaysUntilRenewal - daysUntilRenewal) / maxDaysUntilRenewal) * 100
-                  clamped to [0, 100]; deals past end date = 100
+// Safe normalization helper — returns 0 when max is 0 (all values null/same)
+function norm(value, max) { return max > 0 ? (value / max) * 100 : 0; }
+
+// Per-deal, using days as integers:
+valueScore      = norm(amount ?? 0,           max(amounts in set))
+contactScore    = norm(daysSinceContact ?? 0, max(daysSinceContact in set))
+renewalScore    = clamp(norm(maxDaysUntilRenewal - daysUntilRenewal,
+                             maxDaysUntilRenewal), 0, 100)
+                  // daysUntilRenewal is negative for past-due deals → clamp pushes to 100
+                  // if ALL deals in set are past due, maxDaysUntilRenewal ≤ 0 → norm returns 0
+                  //   → every deal gets renewalScore = 100 (all equally past due)
 
 totalScore = round(valueScore + contactScore + renewalScore)
 ```
 
-Deals with missing fields default that component to 0. Results sorted descending by `totalScore`.
+Edge cases:
+- `amount` / `lastContactedDate` / `contractEndDate` null → that component's value is treated as 0, contributing 0 pts to the score. Display `—` in the card.
+- All deals in the set share the same non-null value for a component → max equals every value → all scores for that component are 100 (ties are intentional; relative ranking within ties falls to the other components).
+- Single-result sets: all three components score 100 → totalScore = 300 for the only deal.
+
+Results sorted descending by `totalScore`.
 
 ---
 
@@ -84,22 +96,35 @@ Both distribution tiles show a simple color-bar per category. No pie charts — 
 
 ## API
 
-### Existing: `POST /api/hubspot/search`
+### Shared type: `DealResult`
 
-Currently returns a single deal. Change to return an **array** of up to 20 deals, each with scoring fields:
+Both endpoints return arrays of this type. Scoring fields are added client-side after the API responds.
 
 ```ts
-{
+interface DealResult {
   id: string;
   name: string;
   stage: string;
   pipeline: string;
   amount: number | null;
-  contractEndDate: string | null;       // ISO date
-  lastContactedDate: string | null;     // ISO date
+  contractEndDate: string | null;       // ISO date string
+  lastContactedDate: string | null;     // ISO date string (notes_last_contacted)
   businessType: string | null;
   company: { id: string | null; name: string; domain: string | null };
+  // Added client-side after normalization:
+  scoreValue: number;        // 0–100
+  scoreContact: number;      // 0–100
+  scoreRenewal: number;      // 0–100
+  totalScore: number;        // 0–300
 }
+```
+
+### Existing: `POST /api/hubspot/search`
+
+Currently returns a single deal. Change to return an **array** of up to 20 `DealResult` objects (without score fields — those are computed client-side). The response shape:
+
+```ts
+{ deals: Omit<DealResult, 'scoreValue' | 'scoreContact' | 'scoreRenewal' | 'totalScore'>[] }
 ```
 
 ### New: `POST /api/hubspot/poll`
@@ -108,14 +133,9 @@ Currently returns a single deal. Change to return an **array** of up to 20 deals
 // Request
 { type: 'renew_30' | 'renew_60' | 'contacted_45' }
 
-// Response — same deal shape as search, plus computed score fields
+// Response — same raw deal shape as search (scores computed client-side)
 {
-  deals: DealResult[];   // sorted by totalScore descending
-  dashboard: {
-    totalValue: number;
-    byBusinessType: Record<string, number>;
-    byDealStage: Record<string, number>;
-  };
+  deals: Omit<DealResult, 'scoreValue' | 'scoreContact' | 'scoreRenewal' | 'totalScore'>[];
 }
 ```
 
@@ -124,7 +144,7 @@ Uses HubSpot Deals Search API (`POST /crm/v3/objects/deals/search`) with `filter
 - `renew_30` / `renew_60`: `contract_end_date` `BETWEEN` today and today+N (timestamp ms range)
 - `contacted_45`: `notes_last_contacted` `LT` today−45 days (timestamp ms)
 
-Fetch up to 100 deals per poll (HubSpot page size limit), score and sort, return top 50.
+Fetch up to 100 deals (HubSpot page size limit) and return all of them. Scoring and sorting happen entirely client-side so no server-side pre-sort is needed — the client scores the full set and renders the top results.
 
 ---
 
@@ -169,15 +189,13 @@ const [loading, setLoading] = useState(false);
 const [selectedDeal, setSelectedDeal] = useState<DealResult | null>(null);
 ```
 
-When a result is selected, `HealthReportView` renders in place of the list. A back button (or the existing close/save flow) returns to the list.
+When a result is selected, `HealthReportView` renders in place of the list (results and dashboard are hidden). A back button at the top of `HealthReportView` sets `selectedDeal` to null, restoring the results list exactly as it was — `mode`, `results`, active poll highlight, and search query text are all preserved. The existing close/save flow in `HealthReportView` also triggers the same return-to-list behavior.
 
 ---
 
 ## Scoring Computation
 
-Scoring runs **client-side** after results are returned — the API returns raw deal data, the client normalizes and sorts. This keeps the API simple and allows re-scoring without a round-trip.
-
-The poll endpoint pre-sorts by score server-side as a fallback for large sets (>50 deals), but the client always re-scores its slice.
+Scoring runs **client-side** after results are returned — both endpoints return raw deal data, the client normalizes across the full result set and sorts. Both search (up to 20 deals) and poll (up to 100 deals) use identical scoring logic; the only difference is the input size.
 
 ---
 
