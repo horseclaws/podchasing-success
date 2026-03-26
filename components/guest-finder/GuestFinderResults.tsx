@@ -1,5 +1,6 @@
 'use client';
 import { GuestFinderCard, PowerScoreTier } from '@/lib/types';
+import InsightCard from '@/components/ui/InsightCard';
 
 const TIER_LABELS: Record<PowerScoreTier, string> = {
   A: 'Tier A — High Power Score (70–100)',
@@ -23,7 +24,7 @@ export default function GuestFinderResults({ cards, onSelectPodcast, selectedId 
         if (tierCards.length === 0) return null;
         return (
           <div key={tier}>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide mb-3 text-brand-purple">
               {TIER_LABELS[tier]}
             </h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -31,25 +32,27 @@ export default function GuestFinderResults({ cards, onSelectPodcast, selectedId 
                 <button
                   key={i}
                   onClick={() => card.podcastId && onSelectPodcast(card)}
-                  className={`text-left p-4 rounded-lg border transition-colors ${
+                  className={`text-left rounded-2xl border transition-colors ${
                     selectedId && selectedId === card.podcastId
-                      ? 'border-blue-400 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                      ? 'border-brand-purple bg-violet-50'
+                      : 'border-violet-100 bg-white hover:border-brand-purple hover:bg-violet-50'
                   }`}
                 >
-                  <p className="font-medium text-gray-900 text-sm mb-1">{card.podcastName}</p>
-                  <p className="text-xs text-gray-500 leading-relaxed">{card.brief}</p>
-                  {card.podcastURL && (
-                    <a
-                      href={card.podcastURL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-block mt-2 text-xs text-blue-600 hover:underline"
-                    >
-                      View on Podchaser →
-                    </a>
-                  )}
+                  <InsightCard className="h-full">
+                    <p className="font-medium text-foreground text-sm mb-1">{card.podcastName}</p>
+                    <p className="text-xs text-gray-500 leading-relaxed">{card.brief}</p>
+                    {card.podcastURL && (
+                      <a
+                        href={card.podcastURL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-block mt-2 text-xs text-brand-cyan hover:underline"
+                      >
+                        View on Podchaser →
+                      </a>
+                    )}
+                  </InsightCard>
                 </button>
               ))}
             </div>
