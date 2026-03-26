@@ -1,31 +1,28 @@
 import type { DealResult } from '@/lib/deal-scoring';
 
 interface Props {
-  deals: DealResult[];   // full scored set, not capped
+  deals: DealResult[];
 }
 
-const BAR_COLORS = ['#4A027D', '#0DAAC9', '#2BDA9F', '#FB0467'];
+const BAR_COLORS = ['bg-brand-purple', 'bg-brand-cyan', 'bg-brand-mint', 'bg-brand-pink'];
 
 function DistributionTile({ title, counts }: { title: string; counts: Record<string, number> }) {
   const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   const max = entries[0]?.[1] ?? 1;
   return (
-    <div className="rounded-2xl p-4" style={{ backgroundColor: '#ffffff', border: '1px solid #ede9f5' }}>
-      <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#4A027D' }}>{title}</p>
+    <div className="rounded-2xl p-4 bg-white border border-violet-100">
+      <p className="text-xs font-semibold uppercase tracking-wide mb-3 text-brand-purple">{title}</p>
       <div className="space-y-2">
         {entries.map(([label, count], i) => (
           <div key={label}>
             <div className="flex justify-between text-xs mb-0.5">
-              <span style={{ color: '#374151' }}>{label}</span>
-              <span style={{ color: '#9ca3af' }}>{count}</span>
+              <span className="text-gray-700">{label}</span>
+              <span className="text-gray-400">{count}</span>
             </div>
-            <div className="h-1.5 rounded-full" style={{ backgroundColor: '#F3F0F8' }}>
+            <div className="h-1.5 rounded-full bg-violet-50">
               <div
-                className="h-1.5 rounded-full"
-                style={{
-                  width: `${(count / max) * 100}%`,
-                  backgroundColor: BAR_COLORS[i % BAR_COLORS.length],
-                }}
+                className={`h-1.5 rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`}
+                style={{ width: `${(count / max) * 100}%` }}
               />
             </div>
           </div>
@@ -52,13 +49,12 @@ export default function ResultsDashboard({ deals }: Props) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-      {/* Total value tile */}
-      <div className="rounded-2xl p-4" style={{ backgroundColor: '#ffffff', border: '1px solid #ede9f5' }}>
-        <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#4A027D' }}>Total Contract Value</p>
-        <p className="text-2xl font-bold" style={{ color: '#1a1a2e' }}>
+      <div className="rounded-2xl p-4 bg-white border border-violet-100">
+        <p className="text-xs font-semibold uppercase tracking-wide mb-1 text-brand-purple">Total Contract Value</p>
+        <p className="text-2xl font-bold text-foreground">
           ${Math.round(totalValue).toLocaleString('en-US')}
         </p>
-        <p className="text-xs mt-0.5" style={{ color: '#9ca3af' }}>
+        <p className="text-xs mt-0.5 text-gray-400">
           {deals.length} deal{deals.length !== 1 ? 's' : ''}
         </p>
       </div>
