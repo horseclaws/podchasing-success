@@ -14,31 +14,27 @@ interface Props {
 export default function OwnerFilter({ activeOwner, onSelect }: Props) {
   return (
     <div className="flex flex-wrap gap-2 mb-4">
-      {/* All pill */}
       <button
         onClick={() => onSelect(null)}
-        className="text-xs font-semibold px-4 py-2 rounded-xl transition-all"
-        style={{
-          backgroundColor: activeOwner === null ? '#4A027D' : '#F3F0F8',
-          color: activeOwner === null ? '#ffffff' : '#4A027D',
-          border: `1.5px solid ${activeOwner === null ? '#4A027D' : '#e5e7eb'}`,
-        }}
+        className={`text-xs font-semibold px-4 py-2 rounded-xl border transition-all ${
+          activeOwner === null
+            ? 'bg-brand-purple text-white border-brand-purple'
+            : 'bg-violet-50 text-brand-purple border-gray-200'
+        }`}
       >
         All
       </button>
-
       {OWNERS.map(({ id, label }) => {
         const isActive = activeOwner === id;
         return (
           <button
             key={id}
             onClick={() => onSelect(isActive ? null : id)}
-            className="text-xs font-semibold px-4 py-2 rounded-xl transition-all"
-            style={{
-              backgroundColor: isActive ? '#4A027D' : '#F3F0F8',
-              color: isActive ? '#ffffff' : '#4A027D',
-              border: `1.5px solid ${isActive ? '#4A027D' : '#e5e7eb'}`,
-            }}
+            className={`text-xs font-semibold px-4 py-2 rounded-xl border transition-all ${
+              isActive
+                ? 'bg-brand-purple text-white border-brand-purple'
+                : 'bg-violet-50 text-brand-purple border-gray-200'
+            }`}
           >
             {label}
           </button>

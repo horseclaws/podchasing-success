@@ -43,21 +43,17 @@ export default function ClientSearchBar({ onResults, disabled }: Props) {
           onChange={e => { setQuery(e.target.value); setError(''); }}
           placeholder="Search client by deal name…"
           disabled={disabled || loading}
-          className="flex-1 rounded-xl px-4 py-2.5 text-sm focus:outline-none transition-shadow disabled:opacity-60"
-          style={{ border: '1.5px solid #e5e7eb', backgroundColor: '#ffffff', color: '#1a1a2e' }}
-          onFocus={e => (e.target.style.borderColor = '#4A027D')}
-          onBlur={e => (e.target.style.borderColor = '#e5e7eb')}
+          className="flex-1 rounded-xl px-4 py-2.5 text-sm bg-white text-foreground border border-gray-200 focus:outline-none focus:border-brand-purple transition-colors disabled:opacity-60"
         />
         <button
           type="submit"
           disabled={disabled || loading || !query.trim()}
-          className="px-5 py-2.5 text-sm font-semibold rounded-xl transition-opacity disabled:opacity-40"
-          style={{ backgroundColor: '#FB0467', color: '#ffffff' }}
+          className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-brand-pink text-white transition-opacity disabled:opacity-40"
         >
           {loading ? 'Searching…' : 'Search'}
         </button>
       </form>
-      {error && <p className="text-sm mt-2" style={{ color: '#6b7280' }}>{error}</p>}
+      {error && <p className="text-sm mt-2 text-gray-500">{error}</p>}
     </div>
   );
 }

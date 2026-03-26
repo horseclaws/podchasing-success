@@ -10,9 +10,9 @@ interface Props {
 }
 
 const BUTTONS: { type: PollType; label: string }[] = [
-  { type: 'renew_30',     label: 'Renewing in 30 days' },
-  { type: 'renew_60',     label: 'Renewing in 60 days' },
-  { type: 'contacted_45', label: 'Last Contacted 45+ days' },
+  { type: 'renew_30',      label: 'Renewing in 30 days' },
+  { type: 'renew_60',      label: 'Renewing in 60 days' },
+  { type: 'contacted_45',  label: 'Last Contacted 45+ days' },
 ];
 
 export default function PollButtons({ activeMode, disabled, onPoll }: Props) {
@@ -25,12 +25,11 @@ export default function PollButtons({ activeMode, disabled, onPoll }: Props) {
             key={type}
             onClick={() => onPoll(type)}
             disabled={disabled}
-            className="text-xs font-semibold px-4 py-2 rounded-xl transition-all disabled:opacity-40"
-            style={{
-              backgroundColor: isActive ? '#4A027D' : '#F3F0F8',
-              color: isActive ? '#ffffff' : '#4A027D',
-              border: `1.5px solid ${isActive ? '#4A027D' : '#e5e7eb'}`,
-            }}
+            className={`text-xs font-semibold px-4 py-2 rounded-xl border transition-all disabled:opacity-40 ${
+              isActive
+                ? 'bg-brand-purple text-white border-brand-purple'
+                : 'bg-violet-50 text-brand-purple border-gray-200'
+            }`}
           >
             {label}
           </button>
