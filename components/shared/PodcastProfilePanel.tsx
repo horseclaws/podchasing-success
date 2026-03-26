@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { EpisodeSummary } from '@/lib/types';
+import InsightCard from '@/components/ui/InsightCard';
 
 interface Props {
   podcastId: string;
@@ -42,7 +43,6 @@ export default function PodcastProfilePanel({ podcastId, podcastName, podcastUrl
         setEpisodes(profile.episodes);
         setLoadingProfile(false);
 
-        // Now fetch AI summary
         setLoadingSummary(true);
         const summaryRes = await fetch('/api/minimax/summary', {
           method: 'POST',
@@ -72,17 +72,16 @@ export default function PodcastProfilePanel({ podcastId, podcastName, podcastUrl
   }, [podcastId, podcastName]);
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-8rem)]">
-      {/* Header */}
+    <InsightCard className="flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-8rem)]">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h2 className="font-semibold text-gray-900 text-sm leading-tight">{podcastName}</h2>
+          <h2 className="font-semibold text-foreground text-sm leading-tight">{podcastName}</h2>
           {podcastUrl && (
             <a
               href={podcastUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-blue-600 hover:underline"
+              className="text-xs text-brand-cyan hover:underline"
             >
               View on Podchaser
             </a>
@@ -93,26 +92,24 @@ export default function PodcastProfilePanel({ podcastId, podcastName, podcastUrl
 
       {loadingProfile ? (
         <div className="flex items-center gap-2 text-sm text-gray-400">
-          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-brand-purple border-t-transparent rounded-full animate-spin" />
           Loading profile…
         </div>
       ) : error ? (
-        <p className="text-sm text-red-500">{error}</p>
+        <p className="text-sm text-brand-pink">{error}</p>
       ) : (
         <>
-          {/* Description */}
           {description && (
             <p className="text-xs text-gray-600 leading-relaxed">{description}</p>
           )}
 
-          {/* AI Guest Pattern Summary */}
           <div>
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
               Guest Pattern
             </h3>
             {loadingSummary ? (
               <div className="flex items-center gap-2 text-xs text-gray-400">
-                <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 border-brand-purple border-t-transparent rounded-full animate-spin" />
                 Analyzing…
               </div>
             ) : summary ? (
@@ -120,7 +117,6 @@ export default function PodcastProfilePanel({ podcastId, podcastName, podcastUrl
             ) : null}
           </div>
 
-          {/* Recent Episodes */}
           {episodes.length > 0 && (
             <div>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -130,9 +126,7 @@ export default function PodcastProfilePanel({ podcastId, podcastName, podcastUrl
                 {episodes.map((ep, i) => (
                   <li key={i} className="text-xs">
                     <p className="font-medium text-gray-800 leading-snug">{ep.title}</p>
-                    {ep.airDate && (
-                      <p className="text-gray-400">{ep.airDate}</p>
-                    )}
+                    {ep.airDate && <p className="text-gray-400">{ep.airDate}</p>}
                   </li>
                 ))}
               </ul>
@@ -140,6 +134,6 @@ export default function PodcastProfilePanel({ podcastId, podcastName, podcastUrl
           )}
         </>
       )}
-    </div>
+    </InsightCard>
   );
 }
