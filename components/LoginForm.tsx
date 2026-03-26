@@ -23,7 +23,7 @@ export default function LoginForm() {
       if (result?.error) {
         setError('Invalid email or password.');
       } else {
-        router.push('/client-health');
+        window.location.href = '/client-health';
       }
     } catch {
       setError('Something went wrong. Please try again.');
