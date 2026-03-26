@@ -7,6 +7,7 @@ import ClientDescriptionForm from '@/components/guest-finder/ClientDescriptionFo
 import GuestFinderResults from '@/components/guest-finder/GuestFinderResults';
 import PodcastProfilePanel from '@/components/shared/PodcastProfilePanel';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import { PageHeader } from '@/components/ui';
 
 export default function GuestFinderPage() {
   const [description, setDescription] = useState('');
@@ -76,7 +77,7 @@ export default function GuestFinderPage() {
   return (
     <div className="flex gap-6">
       <div className="flex-1 min-w-0">
-        <h1 className="text-xl font-semibold text-gray-900 mb-4">Guest Finder</h1>
+        <PageHeader title="Guest Finder" subtitle="Find podcast placement opportunities for your clients" />
 
         <div className="mb-6">
           <ClientDescriptionForm

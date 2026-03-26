@@ -8,6 +8,7 @@ import ResultsDashboard from '@/components/client-health/ResultsDashboard';
 import DealResultsList from '@/components/client-health/DealResultsList';
 import HealthReportView from '@/components/client-health/HealthReportView';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import { PageHeader } from '@/components/ui';
 
 type Mode = 'idle' | 'search' | 'poll_renew_30' | 'poll_renew_60' | 'poll_contacted_45';
 
@@ -85,7 +86,7 @@ export default function ClientHealthPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-6" style={{ color: '#1a1a2e' }}>Client Health</h1>
+      <PageHeader title="Client Health" subtitle="Search accounts or run a pipeline poll" />
 
       <ClientSearchBar onResults={handleSearchResults} disabled={listLoading} />
       <PollButtons activeMode={mode} disabled={listLoading} onPoll={handlePoll} />
