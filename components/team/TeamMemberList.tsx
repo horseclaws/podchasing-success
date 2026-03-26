@@ -1,4 +1,6 @@
 'use client';
+import InsightCard from '@/components/ui/InsightCard';
+
 interface Member {
   id: string;
   name: string;
@@ -15,7 +17,7 @@ interface Props {
 
 export default function TeamMemberList({ members, currentUserId, onRemove }: Props) {
   return (
-    <div className="border border-gray-200 rounded overflow-hidden">
+    <InsightCard className="p-0 overflow-hidden">
       <table className="w-full text-sm">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
@@ -29,7 +31,7 @@ export default function TeamMemberList({ members, currentUserId, onRemove }: Pro
         <tbody>
           {members.map((m) => (
             <tr key={m.id} className="border-t border-gray-100">
-              <td className="px-4 py-2 text-gray-900">{m.name}</td>
+              <td className="px-4 py-2 text-foreground">{m.name}</td>
               <td className="px-4 py-2 text-gray-600">{m.email}</td>
               <td className="px-4 py-2 text-gray-600">{m.hubspot_owner_id}</td>
               <td className="px-4 py-2 text-gray-400">{new Date(m.created_at).toLocaleDateString()}</td>
@@ -46,6 +48,6 @@ export default function TeamMemberList({ members, currentUserId, onRemove }: Pro
           ))}
         </tbody>
       </table>
-    </div>
+    </InsightCard>
   );
 }

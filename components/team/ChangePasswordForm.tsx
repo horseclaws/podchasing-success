@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import InsightCard from '@/components/ui/InsightCard';
 
 export default function ChangePasswordForm() {
   const [current, setCurrent] = useState('');
@@ -33,15 +34,31 @@ export default function ChangePasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 max-w-sm">
-      <h3 className="text-sm font-medium text-gray-900">Change Password</h3>
-      <input placeholder="Current password" type="password" value={current} onChange={e => setCurrent(e.target.value)} required className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm" />
-      <input placeholder="New password" type="password" value={next} onChange={e => setNext(e.target.value)} required className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm" />
-      {error && <p className="text-xs text-red-500">{error}</p>}
-      {message && <p className="text-xs text-green-600">{message}</p>}
-      <button type="submit" disabled={loading} className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
-        {loading ? 'Saving…' : 'Change Password'}
-      </button>
-    </form>
+    <InsightCard className="max-w-sm">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <h3 className="text-sm font-bold text-foreground">Change Password</h3>
+        <input
+          type="password"
+          placeholder="Current password"
+          value={current}
+          onChange={e => setCurrent(e.target.value)}
+          required
+          className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-purple"
+        />
+        <input
+          type="password"
+          placeholder="New password"
+          value={next}
+          onChange={e => setNext(e.target.value)}
+          required
+          className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-purple"
+        />
+        {message && <p className="text-xs text-brand-mint">{message}</p>}
+        {error && <p className="text-xs text-brand-pink">{error}</p>}
+        <button type="submit" disabled={loading} className="px-4 py-1.5 text-sm bg-brand-purple text-white rounded-lg hover:opacity-90 disabled:opacity-50">
+          {loading ? 'Saving…' : 'Change Password'}
+        </button>
+      </form>
+    </InsightCard>
   );
 }
