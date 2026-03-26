@@ -1,3 +1,5 @@
+import InsightCard from '@/components/ui/InsightCard';
+
 const EVENT_LABELS: Record<string, string> = {
   loginSuccess: 'Logins',
   episodePlayButtonClicked: 'Episodes Played',
@@ -23,37 +25,39 @@ export default function UserActivityTable({
 
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#4A027D' }}>User Activity <span style={{ color: '#9ca3af', textTransform: 'none', letterSpacing: 'normal' }}>(60 days)</span></h3>
+      <h3 className="text-xs font-semibold uppercase tracking-wide mb-3 text-brand-purple">
+        User Activity <span className="text-gray-400 normal-case tracking-normal">(60 days)</span>
+      </h3>
       <div className="space-y-3">
         {contacts.map(c => {
           const mp = byEmail[c.email];
           return (
-            <div key={c.email} className="rounded-2xl p-4" style={{ backgroundColor: '#ffffff', border: '1px solid #ede9f5', boxShadow: '0 2px 12px rgba(74,2,125,0.06)' }}>
+            <InsightCard key={c.email} className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold" style={{ color: '#1a1a2e' }}>{c.name}</span>
-                <span className="text-xs" style={{ color: '#9ca3af' }}>Last login: {c.lastLoginDate ?? 'never'}</span>
+                <span className="text-sm font-semibold text-foreground">{c.name}</span>
+                <span className="text-xs text-gray-400">Last login: {c.lastLoginDate ?? 'never'}</span>
               </div>
               {mp ? (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
                     {Object.entries(EVENT_LABELS).map(([key, label]) => (
-                      <div key={key} className="text-center rounded-xl py-2 px-1" style={{ backgroundColor: '#F9F7FC' }}>
-                        <div className="text-base font-semibold" style={{ color: '#4A027D' }}>{mp.events[key] ?? 0}</div>
-                        <div className="text-xs mt-0.5" style={{ color: '#9ca3af' }}>{label}</div>
+                      <div key={key} className="text-center rounded-xl py-2 px-1 bg-background">
+                        <div className="text-base font-semibold text-brand-purple">{mp.events[key] ?? 0}</div>
+                        <div className="text-xs mt-0.5 text-gray-400">{label}</div>
                       </div>
                     ))}
                   </div>
                   {mp.topSearches.length > 0 && (
-                    <p className="text-xs" style={{ color: '#6b7280' }}>Top searches: {mp.topSearches.join(', ')}</p>
+                    <p className="text-xs text-gray-500">Top searches: {mp.topSearches.join(', ')}</p>
                   )}
                   {mp.healthSignals.map(s => (
-                    <p key={s} className="text-xs mt-1 font-medium" style={{ color: '#d97706' }}>⚠ {s}</p>
+                    <p key={s} className="text-xs mt-1 font-medium text-amber-600">⚠ {s}</p>
                   ))}
                 </>
               ) : (
-                <p className="text-xs" style={{ color: '#9ca3af' }}>Mixpanel data unavailable</p>
+                <p className="text-xs text-gray-400">Mixpanel data unavailable</p>
               )}
-            </div>
+            </InsightCard>
           );
         })}
       </div>
