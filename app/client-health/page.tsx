@@ -96,7 +96,7 @@ export default function ClientHealthPage() {
         <LoadingSpinner message={`Loading report for ${selectedDeal.name}…`} />
       )}
       {reportError && (
-        <p className="text-sm py-4" style={{ color: '#6b7280' }}>{reportError}</p>
+        <p className="text-sm py-4 text-gray-500">{reportError}</p>
       )}
       {showHealthReport && (
         <HealthReportView report={report!} onReset={handleReset} />
@@ -107,7 +107,7 @@ export default function ClientHealthPage() {
         <>
           {listLoading && <LoadingSpinner message="Loading deals…" />}
           {!listLoading && listError && (
-            <p className="text-sm py-4" style={{ color: '#6b7280' }}>{listError}</p>
+            <p className="text-sm py-4 text-gray-500">{listError}</p>
           )}
           {!listLoading && !listError && results.length > 0 && (
             <>
@@ -115,12 +115,12 @@ export default function ClientHealthPage() {
               <ResultsDashboard deals={filteredResults} />
               <DealResultsList deals={filteredResults} onSelect={handleSelectDeal} />
               {filteredResults.length === 0 && (
-                <p className="text-sm py-4" style={{ color: '#9ca3af' }}>No deals match this owner.</p>
+                <p className="text-sm py-4 text-gray-400">No deals match this owner.</p>
               )}
             </>
           )}
           {!listLoading && !listError && results.length === 0 && mode !== 'idle' && (
-            <p className="text-sm py-4" style={{ color: '#9ca3af' }}>
+            <p className="text-sm py-4 text-gray-400">
               {mode === 'search' ? 'No deals found.' : 'No deals match this criterion.'}
             </p>
           )}
