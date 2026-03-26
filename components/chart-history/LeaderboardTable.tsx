@@ -1,5 +1,6 @@
 'use client';
 import { LeaderboardEntry } from '@/lib/types';
+import InsightCard from '@/components/ui/InsightCard';
 
 interface Props {
   entries: LeaderboardEntry[];
@@ -9,7 +10,7 @@ interface Props {
 
 export default function LeaderboardTable({ entries, onSelect, selectedId }: Props) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <InsightCard className="p-0 overflow-hidden">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50">
@@ -24,13 +25,13 @@ export default function LeaderboardTable({ entries, onSelect, selectedId }: Prop
           {entries.map((entry) => (
             <tr
               key={entry.id}
-              className={`border-b border-gray-100 hover:bg-blue-50 cursor-pointer ${
-                selectedId === entry.id ? 'bg-blue-50' : ''
+              className={`border-b border-gray-100 hover:bg-violet-50 cursor-pointer ${
+                selectedId === entry.id ? 'bg-violet-50' : ''
               }`}
               onClick={() => onSelect(entry)}
             >
               <td className="px-3 py-2 tabular-nums text-gray-500">{entry.leaderboardPosition}</td>
-              <td className="px-3 py-2 text-blue-600 font-medium">{entry.title}</td>
+              <td className="px-3 py-2 text-brand-purple font-medium">{entry.title}</td>
               <td className="px-3 py-2 tabular-nums text-right">{entry.totalScore}</td>
               <td className="px-3 py-2 tabular-nums text-right">{entry.daysAppeared}</td>
               <td className="px-3 py-2 tabular-nums text-right">#{entry.bestRank}</td>
@@ -38,6 +39,6 @@ export default function LeaderboardTable({ entries, onSelect, selectedId }: Prop
           ))}
         </tbody>
       </table>
-    </div>
+    </InsightCard>
   );
 }

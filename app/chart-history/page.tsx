@@ -116,7 +116,7 @@ export default function ChartHistoryPage() {
             <button
               onClick={run}
               disabled={!isRangeValid}
-              className="px-4 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-1.5 text-sm rounded bg-brand-purple text-white hover:opacity-90 disabled:opacity-50"
             >
               Run
             </button>
