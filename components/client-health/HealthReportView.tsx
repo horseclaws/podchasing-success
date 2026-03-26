@@ -125,7 +125,7 @@ export default function HealthReportView({ report, onReset }: Props) {
               {healthTier && <HealthTierBadge tier={healthTier} />}
             </div>
             <p className="text-xs text-gray-400">
-              Owner: {deal.ownerName as string} · Contract: {deal.contractStart as string ?? '?'} → {deal.contractEnd as string ?? '?'}
+              Owner: {deal.ownerName as string} · Contract: {(deal.contractStart as string | undefined) ?? '?'} → {(deal.contractEnd as string | undefined) ?? '?'}
             </p>
             {!!report.dealOwnerWarning && (
               <p className="text-xs mt-1 font-medium text-amber-600">{report.dealOwnerWarning as string}</p>

@@ -30,7 +30,7 @@ export default function GuestFinderResults({ cards, onSelectPodcast, selectedId 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {tierCards.map((card, i) => (
                 <button
-                  key={i}
+                  key={card.podcastId ?? card.podcastName}
                   onClick={() => card.podcastId && onSelectPodcast(card)}
                   className={`text-left rounded-2xl border transition-colors ${
                     selectedId && selectedId === card.podcastId
