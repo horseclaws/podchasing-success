@@ -12,10 +12,10 @@ const tabs = [
 export default function NavTabs() {
   const pathname = usePathname();
   return (
-    <nav style={{ backgroundColor: '#4A027D' }}>
+    <nav className="bg-brand-purple">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center gap-1 h-14">
-          <span className="text-sm font-semibold tracking-tight mr-6" style={{ color: 'rgba(255,255,255,0.85)' }}>
+          <span className="text-sm font-semibold tracking-tight mr-6 text-white/85">
             Podchaser Intelligence
           </span>
           {tabs.map((tab) => {
@@ -24,11 +24,11 @@ export default function NavTabs() {
               <Link
                 key={tab.href}
                 href={tab.href}
-                className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-150"
-                style={{
-                  color: active ? '#FFEF70' : 'rgba(255,255,255,0.6)',
-                  backgroundColor: active ? 'rgba(255,255,255,0.1)' : 'transparent',
-                }}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-150 ${
+                  active
+                    ? 'text-brand-yellow bg-white/10'
+                    : 'text-white/60 bg-transparent hover:text-white/85'
+                }`}
               >
                 {tab.label}
               </Link>
