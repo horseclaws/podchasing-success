@@ -60,7 +60,7 @@ export interface ChartCategory {
 }
 
 export const CHART_CATEGORIES: ChartCategory[] = [
-  { id: '', displayName: 'Top Podcasts (All)' },
+  { id: 'All Categories', displayName: 'Top Podcasts (All)' },
   { id: 'News', displayName: 'News' },
   { id: 'Comedy', displayName: 'Comedy' },
   { id: 'Business', displayName: 'Business' },

@@ -33,34 +33,45 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-sm bg-white rounded-lg border border-gray-200 p-8">
-      <h1 className="text-xl font-semibold text-gray-900 mb-6">Podchaser Intelligence</h1>
+    <div className="w-full max-w-sm rounded-2xl p-8" style={{ backgroundColor: '#ffffff', boxShadow: '0 24px 48px rgba(0,0,0,0.25)' }}>
+      <div className="mb-8">
+        <div className="w-8 h-8 rounded-lg mb-4" style={{ backgroundColor: '#FB0467' }} />
+        <h1 className="text-xl font-semibold mb-1" style={{ color: '#1a1a2e' }}>Podchaser Intelligence</h1>
+        <p className="text-sm" style={{ color: '#6b7280' }}>Sign in to your account</p>
+      </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label className="block text-xs font-medium mb-1.5" style={{ color: '#374151' }}>Email</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-shadow"
+            style={{ border: '1.5px solid #e5e7eb', color: '#1a1a2e' }}
+            onFocus={e => (e.target.style.borderColor = '#4A027D')}
+            onBlur={e => (e.target.style.borderColor = '#e5e7eb')}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <label className="block text-xs font-medium mb-1.5" style={{ color: '#374151' }}>Password</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-shadow"
+            style={{ border: '1.5px solid #e5e7eb', color: '#1a1a2e' }}
+            onFocus={e => (e.target.style.borderColor = '#4A027D')}
+            onBlur={e => (e.target.style.borderColor = '#e5e7eb')}
           />
         </div>
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p className="text-xs font-medium" style={{ color: '#FB0467' }}>{error}</p>}
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-50"
+          className="w-full py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
+          style={{ backgroundColor: '#FB0467', color: '#ffffff' }}
         >
           {loading ? 'Signing in…' : 'Sign in'}
         </button>

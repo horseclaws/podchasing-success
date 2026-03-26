@@ -1,46 +1,28 @@
+import type { RawDealResult } from '@/lib/deal-scoring';
+
 const BASE = 'https://api.hubapi.com';
+
+export const STAGE_LABELS: Record<string, string> = {
+  '10311744':   'Onboarding',
+  '1236558246': 'Money Back Window',
+  '191321462':  'Basic Pro',
+  '10311745':   'Engagement',
+  '10311748':   'At Risk',
+  '11544543':   'Monthly Renewal',
+  '10311746':   'Promised Renewal',
+  '12714085':   'Connect/API Deals',
+  '8879384':    'Paused/Feature Release',
+};
+
+export function stageLabel(stageId: string): string {
+  return STAGE_LABELS[stageId] ?? stageId;
+}
 
 function headers() {
   return {
     'Authorization': `Bearer ${process.env.HUBSPOT_ACCESS_TOKEN}`,
     'Content-Type': 'application/json',
   };
-}
-
-// ---- Deal Search ----
-// CS reps search by deal name. We know the pipeline and active stages.
-
-export async function searchCompanies(name: string): Promise<HubSpotCompanyResult[]> {
-  const token = name.trim().split(/[\s\-()]+/)
-    .filter(w => w.length > 3)
-    .sort((a, b) => b.length - a.length)[0] ?? name.trim();
-
-  const result = await hubspotPost('/crm/v3/objects/deals/search', {
-    filterGroups: [{
-      filters: [
-        { propertyName: 'dealname', operator: 'CONTAINS_TOKEN', value: token },
-        { propertyName: 'pipeline', operator: 'EQ', value: PIPELINE_ID },
-        { propertyName: 'dealstage', operator: 'IN', values: VALID_STAGES },
-      ],
-    }],
-    sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'DESCENDING' }],
-    properties: ['dealname'],
-    limit: 10,
-  });
-
-  if (!result.results?.length) return [];
-
-  return result.results.map((d: { id: string; properties: { dealname: string } }) => ({
-    id: d.id,
-    dealId: d.id,
-    properties: { name: d.properties.dealname ?? '', domain: null },
-  }));
-}
-
-interface HubSpotCompanyResult {
-  id: string;
-  properties: { name: string; domain: string | null };
-  dealId?: string;
 }
 
 // ---- Deal Fetch ----
@@ -69,6 +51,101 @@ const DEAL_PROPS = [
   'dealname', 'dealstage', 'pipeline', 'hubspot_owner_id',
   'contract_start_date', 'contract_end_date', ...ENTITLEMENT_PROPS,
 ];
+
+// Properties for search/poll list queries (subset — full deal uses DEAL_PROPS)
+const SEARCH_PROPS = [
+  'dealname', 'dealstage', 'pipeline', 'amount',
+  'contract_end_date', 'notes_last_contacted', 'business_type',
+  'hubspot_owner_id',
+];
+
+function mapDealToRaw(d: { id: string; properties: Record<string, string | null> }): RawDealResult {
+  const p = d.properties;
+  return {
+    id: d.id,
+    name: p.dealname ?? '',
+    stage: stageLabel(p.dealstage ?? ''),
+    pipeline: p.pipeline ?? '',
+    amount: p.amount != null && p.amount !== '' ? parseFloat(p.amount) : null,
+    contractEndDate: p.contract_end_date ?? null,
+    lastContactedDate: p.notes_last_contacted ?? null,
+    businessType: p.business_type ?? null,
+    company: { id: null, name: '', domain: null },
+    ownerId: p.hubspot_owner_id ?? null,
+  };
+}
+
+// ---- Deal Search ----
+// CS reps search by deal name. We know the pipeline and active stages.
+
+export async function searchDeals(name: string): Promise<RawDealResult[]> {
+  const token = name.trim().split(/[\s\-()+]+/)
+    .filter(w => w.length > 3)
+    .sort((a, b) => b.length - a.length)[0] ?? name.trim();
+
+  const result = await hubspotPost('/crm/v3/objects/deals/search', {
+    filterGroups: [{
+      filters: [
+        { propertyName: 'dealname', operator: 'CONTAINS_TOKEN', value: token },
+        { propertyName: 'pipeline', operator: 'EQ', value: PIPELINE_ID },
+        { propertyName: 'dealstage', operator: 'IN', values: VALID_STAGES },
+      ],
+    }],
+    sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'DESCENDING' }],
+    properties: SEARCH_PROPS,
+    limit: 20,
+  });
+
+  return (result.results ?? []).map(mapDealToRaw);
+}
+
+export async function pollDeals(
+  type: 'renew_30' | 'renew_60' | 'contacted_45'
+): Promise<RawDealResult[]> {
+  const now = Date.now();
+  const dayMs = 86_400_000;
+
+  let filterGroups: unknown[];
+
+  if (type === 'renew_30') {
+    filterGroups = [{
+      filters: [
+        { propertyName: 'contract_end_date', operator: 'BETWEEN',
+          value: String(now), highValue: String(now + 30 * dayMs) },
+        { propertyName: 'pipeline', operator: 'EQ', value: PIPELINE_ID },
+        { propertyName: 'dealstage', operator: 'IN', values: VALID_STAGES },
+      ],
+    }];
+  } else if (type === 'renew_60') {
+    filterGroups = [{
+      filters: [
+        { propertyName: 'contract_end_date', operator: 'BETWEEN',
+          value: String(now), highValue: String(now + 60 * dayMs) },
+        { propertyName: 'pipeline', operator: 'EQ', value: PIPELINE_ID },
+        { propertyName: 'dealstage', operator: 'IN', values: VALID_STAGES },
+      ],
+    }];
+  } else {
+    // contacted_45: last contacted more than 45 days ago
+    filterGroups = [{
+      filters: [
+        { propertyName: 'notes_last_contacted', operator: 'LT',
+          value: String(now - 45 * dayMs) },
+        { propertyName: 'pipeline', operator: 'EQ', value: PIPELINE_ID },
+        { propertyName: 'dealstage', operator: 'IN', values: VALID_STAGES },
+      ],
+    }];
+  }
+
+  const result = await hubspotPost('/crm/v3/objects/deals/search', {
+    filterGroups,
+    sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'DESCENDING' }],
+    properties: SEARCH_PROPS,
+    limit: 100,
+  });
+
+  return (result.results ?? []).map(mapDealToRaw);
+}
 
 export async function fetchDealById(dealId: string) {
   const props = DEAL_PROPS.join(',');

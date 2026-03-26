@@ -15,9 +15,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const session = await auth();
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
+      <body className={`${inter.className} min-h-screen`} style={{ background: '#F9F7FC' }}>
         {session && <NavTabs />}
-        <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
+        <main className="max-w-7xl mx-auto px-6 py-8">{children}</main>
       </body>
     </html>
   );

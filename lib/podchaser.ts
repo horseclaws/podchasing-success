@@ -100,12 +100,24 @@ export async function fetchChartEntries(
         } | null;
       };
     };
-    return (data.data.charts?.data ?? []).map((e) => ({
+    const rawEntries = (data.data.charts?.data ?? []).map((e) => ({
       podcastId: e.podcast.id,
       title: e.podcast.title,
       url: e.podcast.url,
       rank: e.position,
     }));
+
+    // Deduplicate by podcastId, keeping best (lowest) rank.
+    // The Podchaser API returns duplicate entries when no category is specified
+    // because it combines multiple sub-charts into a single response.
+    const deduped = new Map<string, DailyChartEntry>();
+    for (const entry of rawEntries) {
+      const existing = deduped.get(entry.podcastId);
+      if (!existing || entry.rank < existing.rank) {
+        deduped.set(entry.podcastId, entry);
+      }
+    }
+    return [...deduped.values()];
   } catch (err) {
     if (err instanceof Error && err.message.startsWith('SERVER_ERROR_')) {
       return []; // Gap day — no chart data

@@ -10,6 +10,7 @@ export interface RawDealResult {
   lastContactedDate: string | null;  // ISO date string
   businessType: string | null;
   company: { id: string | null; name: string; domain: string | null };
+  ownerId: string | null;            // hubspot_owner_id
 }
 
 export interface DealResult extends RawDealResult {

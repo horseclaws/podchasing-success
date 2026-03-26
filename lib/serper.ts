@@ -22,7 +22,7 @@ export interface NewsArticle {
 
 export async function fetchCompanyNews(companyName: string, limit: number): Promise<RawNewsArticle[]> {
   try {
-    const data = await serperPost('/news', { q: `"${companyName}"`, num: limit });
+    const data = await serperPost('/news', { q: `"${companyName}"`, num: limit, tbs: 'qdr:m3' });
     const items: Array<Record<string, unknown>> = data.news ?? [];
     return items.map((item) => ({
       title: String(item.title ?? ''),

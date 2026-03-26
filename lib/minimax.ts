@@ -1,4 +1,5 @@
 import { GuestFinderCard, PowerScoreTier, PodcastSearchResult, EpisodeSummary } from './types';
+import type { MixpanelUserActivity } from '@/lib/mixpanel';
 
 const ENDPOINT = 'https://api.minimax.io/v1/text/chatcompletion_v2';
 const MODEL = 'MiniMax-M2.5';
@@ -145,32 +146,68 @@ export async function generateClientSummary(data: {
     contractEnd: string | null;
     entitlements: Record<string, unknown>;
   };
-  healthTier: string;
   contacts: { name: string; email: string; lastLoginDate: string | null }[];
-  mixpanel: { email: string; events: Record<string, number>; topSearches: string[]; healthSignals: string[] }[];
+  healthTier?: string | null;
+  mixpanel?: MixpanelUserActivity[];
+  includesChorus?: boolean;
 }): Promise<string> {
-  const prompt = `You are a Client Success intelligence assistant for Podchaser. Analyze this client data and provide a concise health summary.
+  const hasMixpanel = !!data.mixpanel?.length;
 
+  // --- Core context (always present) ---
+  const coreContext = `
 Company: ${data.companyName}
-Health Tier: ${data.healthTier}
 Deal Stage: ${data.deal.stage}
 Contract End: ${data.deal.contractEnd ?? 'unknown'}
 
 Feature Entitlements:
 ${Object.entries(data.deal.entitlements).map(([k, v]) => `  ${k}: ${v}`).join('\n')}
 
-Pro Users:
-${data.contacts.map(c => `  ${c.name} (${c.email}) — last login: ${c.lastLoginDate ?? 'never'}`).join('\n')}
+Pro Users (from HubSpot):
+${data.contacts.map(c => `  ${c.name} (${c.email}) — last HubSpot login: ${c.lastLoginDate ?? 'never'}`).join('\n')}
+`.trim();
 
-Mixpanel Activity (60 days):
-${data.mixpanel.map(u => `  ${u.email}: ${JSON.stringify(u.events)} | searches: ${u.topSearches.join(', ')} | signals: ${u.healthSignals.join(', ')}`).join('\n')}
+  // --- Health tier line (only when Mixpanel loaded) ---
+  const tierLine = data.healthTier
+    ? `\nHealth Tier: ${data.healthTier}`
+    : '';
+
+  // --- Mixpanel activity section (only when Mixpanel loaded) ---
+  const mixpanelSection = hasMixpanel
+    ? `\nMixpanel Activity (past 60 days):\n` +
+      data.mixpanel!.map(u => {
+        const searches = u.topSearches.length
+          ? `top searches: ${u.topSearches.slice(0, 5).join(', ')}`
+          : 'no searches recorded';
+        const signals = u.healthSignals.length
+          ? `signals: ${u.healthSignals.join('; ')}`
+          : '';
+        return `  ${u.email}: events: ${JSON.stringify(u.events)} | ${searches}${signals ? ' | ' + signals : ''}`;
+      }).join('\n')
+    : '\nMixpanel Activity: not loaded for this summary.';
+
+  // --- Chorus note (only when flagged) ---
+  const chorusNote = data.includesChorus
+    ? '\nCall recording context (Chorus): reviewed by rep prior to summary generation.'
+    : '';
+
+  // --- Instructions adapt to available data ---
+  const instruction1 = hasMixpanel
+    ? '1. Health tier assessment with reasoning — cite specific user names, login dates, and activity counts'
+    : '1. Deal stage and renewal risk assessment based on contract dates and HubSpot contact data';
+
+  const instruction2 = hasMixpanel
+    ? '2. Feature adoption gaps — list entitlements that are enabled but show zero Mixpanel usage; highlight top search terms as engagement signals'
+    : '2. Feature follow-up opportunities — list entitlements that may need onboarding attention based on deal stage';
+
+  const prompt = `You are a Client Success intelligence assistant for Podchaser. Analyze this client data and write a concise health summary a CS rep can use directly in an engagement email or prep note.
+${coreContext}${tierLine}${mixpanelSection}${chorusNote}
 
 Provide:
-1. Health tier confirmation with reasoning (cite specific user names and dates)
-2. Feature adoption gaps (entitlement enabled but usage = 0)
-3. 2-3 specific, actionable recommendations (reference actual user names and features)
+${instruction1}
+${instruction2}
+3. 2-3 specific, actionable recommendations — reference actual user names and features where data allows
 
-Rules: Health tiers are Active/Drifting/At Risk only. Never fabricate data. If data is missing, say so explicitly. No markdown formatting, no emojis.`;
+Rules: Health tiers are Active/Drifting/At Risk only. Never fabricate data. If a data source was not loaded, say so explicitly rather than guessing. No markdown formatting, no emojis.`;
 
   const raw = await callMiniMax(prompt);
   return stripThinkingTags(raw);

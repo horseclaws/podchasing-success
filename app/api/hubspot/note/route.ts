@@ -15,14 +15,15 @@ export async function POST(req: NextRequest) {
     ? ` Deal owner: ${ownerName(dealOwnerId)}.`
     : '';
 
-  const body = `<b>CS Workspace Health Check — ${date}</b>
+  // HubSpot note bodies require HTML — newlines render as literal whitespace.
+  // Convert the AI summary's paragraph breaks to <br> tags, then wrap the
+  // whole body in a structure that uses <br> instead of newlines.
+  const summaryHtml = aiSummary
+    .split(/\n\n+/)
+    .map((para: string) => para.replace(/\n/g, '<br>'))
+    .join('<br><br>');
 
-Company: ${companyName}
-Health Tier: ${healthTier}
-
-${aiSummary}
-
-[CS Workspace health check by ${userName}.${ownerNote}]`;
+  const body = `<b>CS Workspace Health Check — ${date}</b><br><br>Company: ${companyName}<br>Health Tier: ${healthTier}<br><br>${summaryHtml}<br><br><i>CS Workspace health check by ${userName}.${ownerNote}</i>`;
 
   try {
     const noteId = await writeHealthNote(dealId, body, session.user.hubspot_owner_id);
