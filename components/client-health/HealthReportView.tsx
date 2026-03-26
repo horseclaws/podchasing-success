@@ -6,36 +6,32 @@ import UserActivityTable from './UserActivityTable';
 import ChorusInsights from './ChorusInsights';
 import RecentNews from './RecentNews';
 import AISummary from './AISummary';
+import InsightCard from '@/components/ui/InsightCard';
 import type { MixpanelUserActivity } from '@/lib/mixpanel';
 
 interface UsageInfo { used: number; limit: number; resetsAt: string }
-
 interface Props { report: Record<string, unknown>; onReset: () => void }
 
 export default function HealthReportView({ report, onReset }: Props) {
-  // Mixpanel enrichment state
   const [mixpanel, setMixpanel]               = useState<MixpanelUserActivity[] | null>(null);
   const [mixpanelLoading, setMixpanelLoading] = useState(false);
   const [mixpanelUsage, setMixpanelUsage]     = useState<UsageInfo | null>(null);
   const [mixpanelError, setMixpanelError]     = useState('');
   const [healthTier, setHealthTier]           = useState<'Active' | 'Drifting' | 'At Risk' | null>(null);
 
-  // Chorus / News trigger state
   const [chorusTriggered, setChorusTriggered] = useState(false);
   const [newsTriggered, setNewsTriggered]     = useState(false);
 
-  // AI summary state
-  const [aiSummary, setAiSummary]         = useState('');
+  const [aiSummary, setAiSummary]           = useState('');
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [summaryError, setSummaryError]   = useState('');
+  const [summaryError, setSummaryError]     = useState('');
 
-  // HubSpot save state
   const [saving, setSaving]       = useState(false);
   const [savedNote, setSavedNote] = useState<string | null>(null);
   const [saveError, setSaveError] = useState('');
 
-  const deal    = report.deal as Record<string, unknown>;
-  const company = report.company as Record<string, string>;
+  const deal     = report.deal as Record<string, unknown>;
+  const company  = report.company as Record<string, string>;
   const contacts = report.contacts as { name: string; email: string; lastLoginDate: string | null }[];
 
   async function loadMixpanel() {
@@ -73,11 +69,7 @@ export default function HealthReportView({ report, onReset }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dealId: deal.id,
-          sources: {
-            mixpanel: mixpanel !== null,
-            chorus: chorusTriggered,
-            news: newsTriggered,
-          },
+          sources: { mixpanel: mixpanel !== null, chorus: chorusTriggered, news: newsTriggered },
         }),
       });
       const data = await res.json();
@@ -125,34 +117,34 @@ export default function HealthReportView({ report, onReset }: Props) {
     <div className="space-y-5">
 
       {/* Company header */}
-      <div className="rounded-2xl p-5 flex items-start justify-between" style={{ backgroundColor: '#ffffff', boxShadow: '0 2px 12px rgba(74,2,125,0.08)', border: '1px solid #ede9f5' }}>
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-lg font-semibold" style={{ color: '#1a1a2e' }}>{company.name}</h2>
-            {healthTier && <HealthTierBadge tier={healthTier} />}
+      <InsightCard>
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="text-lg font-semibold text-foreground">{company.name}</h2>
+              {healthTier && <HealthTierBadge tier={healthTier} />}
+            </div>
+            <p className="text-xs text-gray-400">
+              Owner: {deal.ownerName as string} · Contract: {deal.contractStart as string ?? '?'} → {deal.contractEnd as string ?? '?'}
+            </p>
+            {!!report.dealOwnerWarning && (
+              <p className="text-xs mt-1 font-medium text-amber-600">{report.dealOwnerWarning as string}</p>
+            )}
           </div>
-          <p className="text-xs" style={{ color: '#9ca3af' }}>
-            Owner: {deal.ownerName as string} · Contract: {deal.contractStart as string ?? '?'} → {deal.contractEnd as string ?? '?'}
-          </p>
-          {!!report.dealOwnerWarning && (
-            <p className="text-xs mt-1 font-medium" style={{ color: '#d97706' }}>{report.dealOwnerWarning as string}</p>
-          )}
+          <button onClick={onReset} className="text-xs font-medium text-gray-400 hover:opacity-60 transition-opacity">← New search</button>
         </div>
-        <button onClick={onReset} className="text-xs font-medium transition-opacity hover:opacity-60" style={{ color: '#9ca3af' }}>← New search</button>
-      </div>
+      </InsightCard>
 
       <FeatureEntitlements entitlements={deal.entitlements as Record<string, unknown>} />
-
-      {/* User Activity — contacts-only until Mixpanel loads */}
       <UserActivityTable contacts={contacts} mixpanel={mixpanel} />
 
-      {/* Mixpanel enrichment section */}
-      <div className="rounded-2xl p-4" style={{ backgroundColor: '#ffffff', border: '1px solid #ede9f5', boxShadow: '0 2px 8px rgba(74,2,125,0.05)' }}>
+      {/* Mixpanel */}
+      <InsightCard className="p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#4A027D' }}>Mixpanel Activity</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-purple">Mixpanel Activity</p>
             {mixpanelUsage && (
-              <p className="text-xs mt-0.5" style={{ color: '#9ca3af' }}>
+              <p className="text-xs mt-0.5 text-gray-400">
                 {mixpanelUsage.used} of {mixpanelUsage.limit} calls used this hour
               </p>
             )}
@@ -161,65 +153,54 @@ export default function HealthReportView({ report, onReset }: Props) {
             <button
               onClick={loadMixpanel}
               disabled={mixpanelLoading || !!limitReached}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-              style={{ backgroundColor: '#4A027D', color: '#ffffff' }}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-purple text-white transition-opacity disabled:opacity-50"
             >
               {mixpanelLoading ? 'Loading…' : 'Load Mixpanel'}
             </button>
           )}
-          {mixpanel && (
-            <span className="text-xs font-medium" style={{ color: '#2BDA9F' }}>✓ Loaded</span>
-          )}
+          {mixpanel && <span className="text-xs font-medium text-brand-mint">✓ Loaded</span>}
         </div>
-        {mixpanelError && (
-          <p className="text-xs mt-2" style={{ color: '#d97706' }}>{mixpanelError}</p>
-        )}
-      </div>
+        {mixpanelError && <p className="text-xs mt-2 text-amber-600">{mixpanelError}</p>}
+      </InsightCard>
 
-      {/* Chorus Insights section */}
-      <div className="rounded-2xl p-4" style={{ backgroundColor: '#ffffff', border: '1px solid #ede9f5', boxShadow: '0 2px 8px rgba(74,2,125,0.05)' }}>
+      {/* Chorus */}
+      <InsightCard className="p-4">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#4A027D' }}>Chorus Insights</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-purple">Chorus Insights</p>
           {!chorusTriggered && (
             <button
               onClick={() => setChorusTriggered(true)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-              style={{ backgroundColor: '#4A027D', color: '#ffffff' }}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-purple text-white"
             >
               Load Chorus
             </button>
           )}
-          {chorusTriggered && (
-            <span className="text-xs font-medium" style={{ color: '#2BDA9F' }}>✓ Loaded</span>
-          )}
+          {chorusTriggered && <span className="text-xs font-medium text-brand-mint">✓ Loaded</span>}
         </div>
         {chorusTriggered && <ChorusInsights companyName={company.name} />}
-      </div>
+      </InsightCard>
 
-      {/* Recent News section */}
-      <div className="rounded-2xl p-4" style={{ backgroundColor: '#ffffff', border: '1px solid #ede9f5', boxShadow: '0 2px 8px rgba(74,2,125,0.05)' }}>
+      {/* News */}
+      <InsightCard className="p-4">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#4A027D' }}>Recent News</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-purple">Recent News</p>
           {!newsTriggered && (
             <button
               onClick={() => setNewsTriggered(true)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-              style={{ backgroundColor: '#4A027D', color: '#ffffff' }}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-purple text-white"
             >
               Load News
             </button>
           )}
-          {newsTriggered && (
-            <span className="text-xs font-medium" style={{ color: '#2BDA9F' }}>✓ Loaded</span>
-          )}
+          {newsTriggered && <span className="text-xs font-medium text-brand-mint">✓ Loaded</span>}
         </div>
         {newsTriggered && <RecentNews companyName={company.name} />}
-      </div>
+      </InsightCard>
 
-      {/* AI Summary section */}
-      <div className="rounded-2xl p-4" style={{ backgroundColor: '#ffffff', border: '1px solid #ede9f5', boxShadow: '0 2px 8px rgba(74,2,125,0.05)' }}>
-        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#4A027D' }}>AI Summary</p>
-        <p className="text-xs mb-3" style={{ color: '#9ca3af' }}>
+      {/* AI Summary */}
+      <InsightCard className="p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide mb-2 text-brand-purple">AI Summary</p>
+        <p className="text-xs mb-3 text-gray-400">
           Will include: HubSpot data
           {mixpanel !== null && ' + Mixpanel ✓'}
           {chorusTriggered && ' + Chorus ✓'}
@@ -229,22 +210,15 @@ export default function HealthReportView({ report, onReset }: Props) {
           <button
             onClick={generateSummary}
             disabled={summaryLoading}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50"
-            style={{ backgroundColor: '#4A027D', color: '#ffffff' }}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-purple text-white disabled:opacity-50"
           >
             {summaryLoading ? 'Generating…' : 'Generate AI Summary'}
           </button>
         )}
         {summaryError && (
           <>
-            <p className="text-xs mt-2" style={{ color: '#FB0467' }}>{summaryError}</p>
-            <button
-              onClick={generateSummary}
-              className="text-xs font-medium mt-1"
-              style={{ color: '#4A027D' }}
-            >
-              Retry
-            </button>
+            <p className="text-xs mt-2 text-brand-pink">{summaryError}</p>
+            <button onClick={generateSummary} className="text-xs font-medium mt-1 text-brand-purple">Retry</button>
           </>
         )}
         {aiSummary && (
@@ -254,16 +228,19 @@ export default function HealthReportView({ report, onReset }: Props) {
               <button
                 onClick={saveNote}
                 disabled={saving || !!savedNote}
-                className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                style={{ border: '1px solid #ede9f5', color: savedNote ? '#2BDA9F' : '#4A027D', backgroundColor: savedNote ? 'rgba(43,218,159,0.08)' : '#ffffff' }}
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
+                  savedNote
+                    ? 'border-violet-100 text-brand-mint bg-green-50'
+                    : 'border-violet-100 text-brand-purple bg-white'
+                }`}
               >
                 {saving ? 'Saving…' : savedNote ? '✓ Saved to HubSpot' : 'Save to HubSpot'}
               </button>
-              {saveError && <p className="text-xs" style={{ color: '#FB0467' }}>{saveError}</p>}
+              {saveError && <p className="text-xs text-brand-pink">{saveError}</p>}
             </div>
           </>
         )}
-      </div>
+      </InsightCard>
 
     </div>
   );

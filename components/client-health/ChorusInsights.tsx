@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { ChorusInsightsData } from '@/lib/chorus';
+import InsightCard from '@/components/ui/InsightCard';
 
 interface Props {
   companyName: string;
@@ -25,19 +26,19 @@ export default function ChorusInsights({ companyName }: Props) {
 
   if (insights === undefined) {
     return (
-      <div className="rounded-2xl p-5" style={{ backgroundColor: '#ffffff', border: '1px solid #ede9f5' }}>
-        <h3 className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#4A027D' }}>Call Insights</h3>
-        <p className="text-xs" style={{ color: '#9ca3af' }}>Loading call insights…</p>
-      </div>
+      <InsightCard>
+        <h3 className="text-xs font-semibold uppercase tracking-wide mb-1 text-brand-purple">Call Insights</h3>
+        <p className="text-xs text-gray-400">Loading call insights…</p>
+      </InsightCard>
     );
   }
 
   if (insights === null) {
     return (
-      <div className="rounded-2xl p-5" style={{ backgroundColor: '#ffffff', border: '1px solid #ede9f5' }}>
-        <h3 className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#4A027D' }}>Call Insights</h3>
-        <p className="text-xs" style={{ color: '#9ca3af' }}>No Chorus calls found for this account.</p>
-      </div>
+      <InsightCard>
+        <h3 className="text-xs font-semibold uppercase tracking-wide mb-1 text-brand-purple">Call Insights</h3>
+        <p className="text-xs text-gray-400">No Chorus calls found for this account.</p>
+      </InsightCard>
     );
   }
 
@@ -45,26 +46,26 @@ export default function ChorusInsights({ companyName }: Props) {
     ? new Date(insights.latestCallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : 'unknown date';
 
-  const sections: { label: string; items: string[]; color: string }[] = [
-    { label: 'Usage signals', items: insights.usage, color: '#0DAAC9' },
-    { label: 'Frustrations', items: insights.frustrations, color: '#FB0467' },
-    { label: 'Goals', items: insights.goals, color: '#2BDA9F' },
+  const sections: { label: string; items: string[]; colorClass: string; dotClass: string }[] = [
+    { label: 'Usage signals',  items: insights.usage,        colorClass: 'text-brand-cyan',  dotClass: 'text-brand-cyan'  },
+    { label: 'Frustrations',   items: insights.frustrations, colorClass: 'text-brand-pink',  dotClass: 'text-brand-pink'  },
+    { label: 'Goals',          items: insights.goals,        colorClass: 'text-brand-mint',  dotClass: 'text-brand-mint'  },
   ];
 
   return (
-    <div className="rounded-2xl p-5" style={{ backgroundColor: '#ffffff', border: '1px solid #ede9f5', boxShadow: '0 2px 12px rgba(74,2,125,0.06)' }}>
+    <InsightCard>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#4A027D' }}>Call Insights</h3>
-        <span className="text-xs" style={{ color: '#9ca3af' }}>{insights.callCount} call{insights.callCount !== 1 ? 's' : ''} · latest {dateLabel}</span>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-purple">Call Insights</h3>
+        <span className="text-xs text-gray-400">{insights.callCount} call{insights.callCount !== 1 ? 's' : ''} · latest {dateLabel}</span>
       </div>
       <div className="space-y-4">
         {sections.filter(s => s.items.length > 0).map(s => (
           <div key={s.label}>
-            <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: s.color }}>{s.label}</p>
+            <p className={`text-xs font-semibold uppercase tracking-wide mb-1.5 ${s.colorClass}`}>{s.label}</p>
             <ul className="space-y-1">
               {s.items.map((item, i) => (
-                <li key={i} className="text-xs flex gap-2" style={{ color: '#374151' }}>
-                  <span className="shrink-0 mt-0.5" style={{ color: s.color }}>·</span>
+                <li key={i} className="text-xs flex gap-2 text-gray-700">
+                  <span className={`shrink-0 mt-0.5 ${s.dotClass}`}>·</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -72,6 +73,6 @@ export default function ChorusInsights({ companyName }: Props) {
           </div>
         ))}
       </div>
-    </div>
+    </InsightCard>
   );
 }
