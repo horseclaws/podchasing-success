@@ -64,7 +64,7 @@ const SEARCH_PROPS = [
 const DASHBOARD_PROPS = [
   'dealname', 'dealstage', 'pipeline', 'amount',
   'contract_end_date', 'notes_last_contacted', 'business_type',
-  'hubspot_owner_id', 'seats',
+  'hubspot_owner_id', 'number_of_seats',
 ];
 
 function mapDealToRaw(d: { id: string; properties: Record<string, string | null> }): RawDealResult {
@@ -97,7 +97,7 @@ function mapDealToDashboard(
     businessType: p.business_type ?? null,
     ownerId: p.hubspot_owner_id ?? null,
     ownerName: ownerName(p.hubspot_owner_id ?? ''),
-    seats: p.seats != null && p.seats !== '' ? parseInt(p.seats, 10) : 0,
+    seats: p.number_of_seats != null && p.number_of_seats !== '' ? parseInt(p.number_of_seats, 10) : 0,
   };
 }
 
