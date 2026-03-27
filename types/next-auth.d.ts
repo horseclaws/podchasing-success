@@ -9,6 +9,7 @@ declare module 'next-auth' {
       email: string;
       hubspot_owner_id: string;
       must_change_password: boolean;
+      is_manager: boolean;
     };
   }
 }
@@ -18,5 +19,6 @@ declare module 'next-auth/jwt' {
     id: string;
     hubspot_owner_id: string;
     must_change_password: boolean;
+    is_manager: boolean;
   }
 }

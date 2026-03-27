@@ -9,6 +9,7 @@ export interface AppUser {
   email: string;
   hubspot_owner_id: string;
   must_change_password: boolean;
+  is_manager: boolean;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -32,7 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         let rows;
         try {
           rows = await sql`
-            SELECT id, name, email, password_hash, hubspot_owner_id, must_change_password
+            SELECT id, name, email, password_hash, hubspot_owner_id, must_change_password, is_manager
             FROM users
             WHERE email = ${credentials.email as string}
           `;
@@ -55,6 +56,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           hubspot_owner_id: user.hubspot_owner_id,
           must_change_password: user.must_change_password,
+          is_manager: user.is_manager ?? false,
         };
       },
     }),
@@ -66,6 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = appUser.id;
         token.hubspot_owner_id = appUser.hubspot_owner_id;
         token.must_change_password = appUser.must_change_password;
+        token.is_manager = appUser.is_manager;
       }
       return token;
     },
@@ -73,6 +76,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.id = token.id;
       session.user.hubspot_owner_id = token.hubspot_owner_id;
       session.user.must_change_password = token.must_change_password;
+      session.user.is_manager = token.is_manager;
       return session;
     },
   },
