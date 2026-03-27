@@ -1,4 +1,5 @@
 import type { RawDealResult } from '@/lib/deal-scoring';
+import type { DashboardDeal } from '@/types/dashboard';
 
 const BASE = 'https://api.hubapi.com';
 
@@ -59,6 +60,13 @@ const SEARCH_PROPS = [
   'hubspot_owner_id',
 ];
 
+// Dashboard queries include seats (absent from SEARCH_PROPS)
+const DASHBOARD_PROPS = [
+  'dealname', 'dealstage', 'pipeline', 'amount',
+  'contract_end_date', 'notes_last_contacted', 'business_type',
+  'hubspot_owner_id', 'seats',
+];
+
 function mapDealToRaw(d: { id: string; properties: Record<string, string | null> }): RawDealResult {
   const p = d.properties;
   return {
@@ -72,6 +80,24 @@ function mapDealToRaw(d: { id: string; properties: Record<string, string | null>
     businessType: p.business_type ?? null,
     company: { id: null, name: '', domain: null },
     ownerId: p.hubspot_owner_id ?? null,
+  };
+}
+
+function mapDealToDashboard(
+  d: { id: string; properties: Record<string, string | null> }
+): DashboardDeal {
+  const p = d.properties;
+  return {
+    id: d.id,
+    name: p.dealname ?? '',
+    stage: stageLabel(p.dealstage ?? ''),
+    amount: p.amount != null && p.amount !== '' ? parseFloat(p.amount) : null,
+    contractEndDate: p.contract_end_date ?? null,
+    lastContactedDate: p.notes_last_contacted ?? null,
+    businessType: p.business_type ?? null,
+    ownerId: p.hubspot_owner_id ?? null,
+    ownerName: ownerName(p.hubspot_owner_id ?? ''),
+    seats: p.seats != null && p.seats !== '' ? parseInt(p.seats, 10) : 0,
   };
 }
 
@@ -147,6 +173,113 @@ export async function pollDeals(
   return (result.results ?? []).map(mapDealToRaw);
 }
 
+/** All active deals for an owner (or all owners if ownerId is null). */
+export async function fetchDealsForDashboard(ownerId: string | null): Promise<DashboardDeal[]> {
+  const filters: unknown[] = [
+    { propertyName: 'pipeline', operator: 'EQ', value: PIPELINE_ID },
+    { propertyName: 'dealstage', operator: 'IN', values: VALID_STAGES },
+  ];
+  if (ownerId) filters.push({ propertyName: 'hubspot_owner_id', operator: 'EQ', value: ownerId });
+
+  const result = await hubspotPost('/crm/v3/objects/deals/search', {
+    filterGroups: [{ filters }],
+    sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'DESCENDING' }],
+    properties: DASHBOARD_PROPS,
+    limit: 100,
+  });
+
+  return (result.results ?? []).map(mapDealToDashboard);
+}
+
+/** Deals whose contract_end_date falls within `days` from now. */
+export async function fetchRenewingDeals(days: number, ownerId: string | null): Promise<DashboardDeal[]> {
+  const now = Date.now();
+  const filters: unknown[] = [
+    { propertyName: 'contract_end_date', operator: 'BETWEEN',
+      value: String(now), highValue: String(now + days * 86_400_000) },
+    { propertyName: 'pipeline', operator: 'EQ', value: PIPELINE_ID },
+    { propertyName: 'dealstage', operator: 'IN', values: VALID_STAGES },
+  ];
+  if (ownerId) filters.push({ propertyName: 'hubspot_owner_id', operator: 'EQ', value: ownerId });
+
+  const result = await hubspotPost('/crm/v3/objects/deals/search', {
+    filterGroups: [{ filters }],
+    sorts: [{ propertyName: 'contract_end_date', direction: 'ASCENDING' }],
+    properties: DASHBOARD_PROPS,
+    limit: 100,
+  });
+
+  return (result.results ?? []).map(mapDealToDashboard);
+}
+
+/** Deals where last contacted date is older than `days` ago, OR never contacted. */
+export async function fetchOutreachDeals(days: number, ownerId: string | null): Promise<DashboardDeal[]> {
+  const cutoff = Date.now() - days * 86_400_000;
+  const ownerFilter = ownerId
+    ? [{ propertyName: 'hubspot_owner_id', operator: 'EQ', value: ownerId }]
+    : [];
+  const baseFilters: unknown[] = [
+    { propertyName: 'pipeline', operator: 'EQ', value: PIPELINE_ID },
+    { propertyName: 'dealstage', operator: 'IN', values: VALID_STAGES },
+    ...ownerFilter,
+  ];
+
+  const result = await hubspotPost('/crm/v3/objects/deals/search', {
+    filterGroups: [
+      // Group 1: last contacted older than cutoff
+      { filters: [...baseFilters, { propertyName: 'notes_last_contacted', operator: 'LT', value: String(cutoff) }] },
+      // Group 2: never contacted (property has no value)
+      { filters: [...baseFilters, { propertyName: 'notes_last_contacted', operator: 'NOT_HAS_PROPERTY' }] },
+    ],
+    sorts: [{ propertyName: 'notes_last_contacted', direction: 'ASCENDING' }],
+    properties: DASHBOARD_PROPS,
+    limit: 100,
+  });
+
+  return (result.results ?? []).map(mapDealToDashboard);
+}
+
+export interface HubSpotQuote {
+  status: 'draft' | 'sent' | 'accepted';
+  amount: number | null;
+  lastModified: string;
+}
+
+/** Returns the most recent quote for a deal, or null if none. */
+export async function fetchDealQuotes(dealId: string): Promise<HubSpotQuote | null> {
+  try {
+    const assoc = await hubspotGet(`/crm/v3/objects/deals/${dealId}/associations/quotes`);
+    const quoteIds: string[] = (assoc.results ?? []).map((r: { id: string }) => r.id);
+    if (quoteIds.length === 0) return null;
+
+    const quotes = await Promise.all(
+      quoteIds.map(id =>
+        hubspotGet(`/crm/v3/objects/quotes/${id}?properties=hs_quote_status,hs_total,hs_lastmodifieddate`)
+      )
+    );
+
+    const sorted = quotes.sort((a, b) =>
+      new Date(b.properties.hs_lastmodifieddate ?? 0).getTime() -
+      new Date(a.properties.hs_lastmodifieddate ?? 0).getTime()
+    );
+
+    const q = sorted[0];
+    const raw = q.properties.hs_quote_status ?? '';
+    const status = (['draft', 'sent', 'accepted'] as const).includes(raw as never)
+      ? (raw as 'draft' | 'sent' | 'accepted')
+      : 'draft';
+
+    return {
+      status,
+      amount: q.properties.hs_total != null && q.properties.hs_total !== ''
+        ? parseFloat(q.properties.hs_total) : null,
+      lastModified: q.properties.hs_lastmodifieddate ?? '',
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchDealById(dealId: string) {
   const props = DEAL_PROPS.join(',');
   return hubspotGet(`/crm/v3/objects/deals/${dealId}?properties=${props}`);
@@ -189,7 +322,7 @@ export async function fetchContactsForDeal(dealId: string) {
 
   const contacts = await Promise.all(
     contactIds.map((id) =>
-      hubspotGet(`/crm/v3/objects/contacts/${id}?properties=firstname,lastname,email,last_login_date,pro_user`)
+      hubspotGet(`/crm/v3/objects/contacts/${id}?properties=firstname,lastname,email,last_login_date,pro_user,jobtitle`)
     )
   );
 
@@ -199,6 +332,7 @@ export async function fetchContactsForDeal(dealId: string) {
       id: c.id,
       name: [c.properties.firstname, c.properties.lastname].filter(Boolean).join(' '),
       email: c.properties.email ?? '',
+      title: c.properties.jobtitle ?? null,
       lastLoginDate: c.properties.last_login_date ?? null,
     }));
 }
@@ -292,7 +426,7 @@ export async function writeHealthNote(dealId: string, body: string, ownerOwnerId
 
 // ---- Owner Name Map ----
 
-const OWNER_NAMES: Record<string, string> = {
+export const OWNER_NAMES: Record<string, string> = {
   '1774818015': 'Jon Dispenza',
   '184892201': 'Jules Thill',
   '157100429': 'Sydney Stern',
