@@ -1,4 +1,6 @@
 export { default as HeroSummary } from './HeroSummary';
+export { default as HeroSection } from './HeroSection';
+export type { HeroStat } from './HeroSection';
 export { default as DataDetail } from './DataDetail';
 export { default as StatGrid } from './StatGrid';
 export { default as InsightCard } from './InsightCard';

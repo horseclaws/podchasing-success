@@ -35,8 +35,8 @@ export default function LoginForm() {
   return (
     <div className="w-full max-w-sm rounded-2xl p-8" style={{ backgroundColor: '#ffffff', boxShadow: '0 24px 48px rgba(0,0,0,0.25)' }}>
       <div className="mb-8">
-        <div className="w-8 h-8 rounded-lg mb-4" style={{ backgroundColor: '#FB0467' }} />
-        <h1 className="text-xl font-semibold mb-1" style={{ color: '#1a1a2e' }}>Podchaser Intelligence</h1>
+        <div className="w-8 h-8 rounded-lg mb-4" style={{ backgroundColor: '#4A027D' }} />
+        <h1 className="text-xl font-semibold mb-1" style={{ color: '#1a1a2e' }}>CS Dashboard</h1>
         <p className="text-sm" style={{ color: '#6b7280' }}>Sign in to your account</p>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
