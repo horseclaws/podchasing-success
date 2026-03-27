@@ -242,6 +242,7 @@ All GET routes enforce the owner parameter contract described above. Non-manager
 - Add `is_manager BOOLEAN DEFAULT FALSE` column to the `users` table.
 - Set `is_manager = true` for Sydney's user record.
 - Update `lib/auth.ts`: select `is_manager` in `authorize()`, add to `AppUser`, forward through JWT and session callbacks.
+- Update `types/next-auth.d.ts`: add `is_manager: boolean` to both the `Session.user` augmentation block and the `JWT` augmentation block, or TypeScript will reject any access to `session.user.is_manager` across the codebase.
 
 ---
 
