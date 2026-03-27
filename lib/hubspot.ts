@@ -60,7 +60,7 @@ const SEARCH_PROPS = [
   'hubspot_owner_id',
 ];
 
-// Dashboard queries include seats (absent from SEARCH_PROPS)
+// Dashboard queries include number_of_seats (absent from SEARCH_PROPS)
 const DASHBOARD_PROPS = [
   'dealname', 'dealstage', 'pipeline', 'amount',
   'contract_end_date', 'notes_last_contacted', 'business_type',
