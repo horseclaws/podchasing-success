@@ -14,15 +14,20 @@ export async function GET(req: NextRequest) {
   );
   if (error) return NextResponse.json({ error }, { status: 403 });
 
-  const deals = await fetchDealsForDashboard(ownerId);
-  const contactArrays = await Promise.all(
-    deals.map(d => fetchContactsForDeal(d.id).catch(() => []))
-  );
+  try {
+    const deals = await fetchDealsForDashboard(ownerId);
+    const contactArrays = await Promise.all(
+      deals.map(d => fetchContactsForDeal(d.id).catch(() => []))
+    );
 
-  const result: DealWithContacts[] = deals.map((deal, i) => ({
-    ...deal,
-    contacts: enrichContacts(contactArrays[i]),
-  }));
+    const result: DealWithContacts[] = deals.map((deal, i) => ({
+      ...deal,
+      contacts: enrichContacts(contactArrays[i]),
+    }));
 
-  return NextResponse.json(result);
+    return NextResponse.json(result);
+  } catch (e) {
+    console.error('[dashboard/seats]', e);
+    return NextResponse.json({ error: 'Failed to load data' }, { status: 502 });
+  }
 }

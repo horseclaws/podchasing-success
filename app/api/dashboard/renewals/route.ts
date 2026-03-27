@@ -17,30 +17,35 @@ export async function GET(req: NextRequest) {
   const daysParam = Number(req.nextUrl.searchParams.get('days'));
   const days = [30, 60, 90].includes(daysParam) ? daysParam : 30;
 
-  const deals = await fetchRenewingDeals(days, ownerId);
+  try {
+    const deals = await fetchRenewingDeals(days, ownerId);
 
-  const [contactArrays, rawQuotes] = await Promise.all([
-    Promise.all(deals.map(d => fetchContactsForDeal(d.id).catch(() => []))),
-    Promise.all(deals.map(d => fetchDealQuotes(d.id).catch(() => null))),
-  ]);
+    const [contactArrays, rawQuotes] = await Promise.all([
+      Promise.all(deals.map(d => fetchContactsForDeal(d.id).catch(() => []))),
+      Promise.all(deals.map(d => fetchDealQuotes(d.id).catch(() => null))),
+    ]);
 
-  const result: DealWithQuote[] = deals.map((deal, i) => {
-    const contacts = enrichContacts(contactArrays[i]);
-    const q = rawQuotes[i];
-    const daysUntilRenewal = deal.contractEndDate
-      ? Math.round((new Date(deal.contractEndDate).getTime() - Date.now()) / 86_400_000)
-      : 0;
+    const result: DealWithQuote[] = deals.map((deal, i) => {
+      const contacts = enrichContacts(contactArrays[i]);
+      const q = rawQuotes[i];
+      const daysUntilRenewal = deal.contractEndDate
+        ? Math.round((new Date(deal.contractEndDate).getTime() - Date.now()) / 86_400_000)
+        : 0;
 
-    const quote = q ? {
-      status: q.status,
-      amount: q.amount,
-      percentChange: (deal.amount && q.amount)
-        ? Math.round(((q.amount - deal.amount) / deal.amount) * 100)
-        : null,
-    } : null;
+      const quote = q ? {
+        status: q.status,
+        amount: q.amount,
+        percentChange: (deal.amount && q.amount)
+          ? Math.round(((q.amount - deal.amount) / deal.amount) * 100)
+          : null,
+      } : null;
 
-    return { ...deal, contacts, quote, daysUntilRenewal };
-  });
+      return { ...deal, contacts, quote, daysUntilRenewal };
+    });
 
-  return NextResponse.json(result);
+    return NextResponse.json(result);
+  } catch (e) {
+    console.error('[dashboard/renewals]', e);
+    return NextResponse.json({ error: 'Failed to load data' }, { status: 502 });
+  }
 }

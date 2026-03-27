@@ -17,6 +17,11 @@ export async function GET(req: NextRequest) {
   const daysParam = Number(req.nextUrl.searchParams.get('days'));
   const days = [30, 45, 60].includes(daysParam) ? daysParam : 30;
 
-  const deals = await fetchOutreachDeals(days, ownerId);
-  return NextResponse.json(deals);
+  try {
+    const deals = await fetchOutreachDeals(days, ownerId);
+    return NextResponse.json(deals);
+  } catch (e) {
+    console.error('[dashboard/outreach]', e);
+    return NextResponse.json({ error: 'Failed to load data' }, { status: 502 });
+  }
 }
