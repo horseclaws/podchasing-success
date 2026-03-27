@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import type { DashboardContact, DashboardDeal, LoginTier } from '@/lib/dashboard';
-import { PageHeader } from '@/components/ui';
+import { HeroSection } from '@/components/ui';
 import DashboardSubNav from './DashboardSubNav';
 import OwnerToggle from './OwnerToggle';
 import OverviewTab from './OverviewTab';
@@ -39,9 +39,14 @@ export default function DashboardClient({ isManager, hubspotOwnerId }: Props) {
   }
 
   return (
-    <div>
-      <PageHeader title="Dashboard" subtitle="Your book of business at a glance" />
-
+    <>
+      <HeroSection
+        badge="DASHBOARD"
+        title="Your"
+        titleAccent="Dashboard"
+        subtitle="Your book of business at a glance"
+      />
+      <div className="px-8 py-8">
       {isManager && (
         <OwnerToggle selected={ownerId} onChange={setOwnerId} currentUserId={hubspotOwnerId} />
       )}
@@ -72,6 +77,7 @@ export default function DashboardClient({ isManager, hubspotOwnerId }: Props) {
           onClose={() => setPanel(null)}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }

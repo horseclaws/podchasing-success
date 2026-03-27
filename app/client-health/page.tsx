@@ -8,7 +8,7 @@ import ResultsDashboard from '@/components/client-health/ResultsDashboard';
 import DealResultsList from '@/components/client-health/DealResultsList';
 import HealthReportView from '@/components/client-health/HealthReportView';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { PageHeader } from '@/components/ui';
+import { HeroSection } from '@/components/ui';
 
 type Mode = 'idle' | 'search' | 'poll_renew_30' | 'poll_renew_60' | 'poll_contacted_45';
 
@@ -84,10 +84,25 @@ export default function ClientHealthPage() {
   const showHealthReport = !!(selectedDeal && report && !reportLoading);
   const showList         = !selectedDeal && !reportLoading;
 
-  return (
-    <div>
-      <PageHeader title="Client Health" subtitle="Search accounts or run a pipeline poll" />
+  const heroStats = results.length > 0
+    ? [
+        { value: results.length, label: 'Total' },
+        { value: results.filter(d => d.healthTier === 'Active').length, label: 'Active' },
+        { value: results.filter(d => d.healthTier === 'Drifting').length, label: 'Drifting' },
+        { value: results.filter(d => d.healthTier === 'At Risk').length, label: 'At Risk' },
+      ]
+    : undefined;
 
+  return (
+    <>
+      <HeroSection
+        badge="CLIENT HEALTH"
+        title="Client"
+        titleAccent="Health"
+        subtitle="Search accounts or run a pipeline poll"
+        stats={heroStats}
+      />
+      <div className="px-8 py-8">
       <ClientSearchBar onResults={handleSearchResults} disabled={listLoading} />
       <PollButtons activeMode={mode} disabled={listLoading} onPoll={handlePoll} />
 
@@ -126,6 +141,7 @@ export default function ClientHealthPage() {
           )}
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }

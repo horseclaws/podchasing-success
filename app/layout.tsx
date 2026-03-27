@@ -1,14 +1,15 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import NavTabs from '@/components/NavTabs';
+import TopNav from '@/components/TopNav';
+import Sidebar from '@/components/Sidebar';
 import { auth } from '@/lib/auth';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Podchaser Intelligence',
-  description: 'Podcast chart history and guest finder',
+  title: 'CS Dashboard',
+  description: 'Client Success team dashboard',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -16,8 +17,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body className={`${inter.className} min-h-screen bg-background`}>
-        {session && <NavTabs />}
-        <main className="max-w-7xl mx-auto px-6 py-8">{children}</main>
+        {session ? (
+          <>
+            <TopNav />
+            <div className="flex pt-14 min-h-screen">
+              <Sidebar />
+              <div className="ml-52 flex-1 min-w-0">
+                <main>{children}</main>
+              </div>
+            </div>
+          </>
+        ) : (
+          <main className="min-h-screen flex items-center justify-center px-6">
+            {children}
+          </main>
+        )}
       </body>
     </html>
   );

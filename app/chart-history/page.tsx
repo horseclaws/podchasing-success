@@ -7,7 +7,7 @@ import MonthYearPicker from '@/components/chart-history/MonthYearPicker';
 import LeaderboardTable from '@/components/chart-history/LeaderboardTable';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import PodcastProfilePanel from '@/components/shared/PodcastProfilePanel';
-import { PageHeader } from '@/components/ui';
+import { HeroSection } from '@/components/ui';
 
 export default function ChartHistoryPage() {
   const [categoryId, setCategoryId] = useState('');
@@ -76,9 +76,16 @@ export default function ChartHistoryPage() {
   }
 
   return (
-    <div className="flex gap-6">
+    <>
+      <HeroSection
+        badge="CHART HISTORY"
+        title="Chart"
+        titleAccent="History"
+        subtitle="Leaderboard rankings across podcast categories"
+      />
+      <div className="px-8 py-8">
+      <div className="flex gap-6">
       <div className="flex-1 min-w-0">
-        <PageHeader title="Chart History" subtitle="Leaderboard rankings across podcast categories" />
 
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -169,5 +176,7 @@ export default function ChartHistoryPage() {
         </div>
       )}
     </div>
+      </div>
+    </>
   );
 }
