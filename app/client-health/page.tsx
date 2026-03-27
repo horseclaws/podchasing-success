@@ -87,9 +87,9 @@ export default function ClientHealthPage() {
   const heroStats = results.length > 0
     ? [
         { value: results.length, label: 'Total' },
-        { value: results.filter(d => d.healthTier === 'Active').length, label: 'Active' },
-        { value: results.filter(d => d.healthTier === 'Drifting').length, label: 'Drifting' },
-        { value: results.filter(d => d.healthTier === 'At Risk').length, label: 'At Risk' },
+        { value: results.filter(d => d.totalScore >= 200).length, label: 'Healthy' },
+        { value: results.filter(d => d.totalScore >= 100 && d.totalScore < 200).length, label: 'Drifting' },
+        { value: results.filter(d => d.totalScore < 100).length, label: 'At Risk' },
       ]
     : undefined;
 
