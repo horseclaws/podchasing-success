@@ -1102,7 +1102,7 @@ export default function UserSidePanel({ contact, deal, onClose }: Props) {
       const ctx: EmailDraftContext = {
         type: draftType,
         deal: { company: deal.name, renewalDate: deal.contractEndDate, amount: deal.amount, stage: deal.stage },
-        contact: { name: contact.name, title: null, lastLogin: contact.lastLoginDate, tier: contact.tier },
+        contact: { name: contact.name, title: contact.title, lastLogin: contact.lastLoginDate, tier: contact.tier },
         mixpanel: mixpanel ?? undefined,
       };
       const res = await fetch('/api/dashboard/draft', {
@@ -1138,6 +1138,8 @@ export default function UserSidePanel({ contact, deal, onClose }: Props) {
         <div className="flex items-start justify-between p-5 border-b border-gray-100">
           <div>
             <h2 className="text-base font-semibold text-foreground">{contact.name || contact.email}</h2>
+            {contact.title && <p className="text-xs text-brand-purple mt-0.5">{contact.title}</p>}
+            <p className="text-xs text-gray-400 mt-0.5">{deal.name}</p>
             <p className="text-sm text-gray-500 mt-0.5">{contact.email}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none ml-4">&times;</button>
