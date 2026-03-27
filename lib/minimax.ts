@@ -1,5 +1,6 @@
 import { GuestFinderCard, PowerScoreTier, PodcastSearchResult, EpisodeSummary } from './types';
 import type { MixpanelUserActivity } from '@/lib/mixpanel';
+import type { EmailDraftContext } from '@/lib/dashboard';
 
 const ENDPOINT = 'https://api.minimax.io/v1/text/chatcompletion_v2';
 const MODEL = 'MiniMax-M2.5';
@@ -208,6 +209,44 @@ ${instruction2}
 3. 2-3 specific, actionable recommendations — reference actual user names and features where data allows
 
 Rules: Health tiers are Active/Drifting/At Risk only. Never fabricate data. If a data source was not loaded, say so explicitly rather than guessing. No markdown formatting, no emojis.`;
+
+  const raw = await callMiniMax(prompt);
+  return stripThinkingTags(raw);
+}
+
+export async function generateEmailDraft(ctx: EmailDraftContext): Promise<string> {
+  const { type, deal, contact, mixpanel } = ctx;
+
+  const dealCtx = [
+    `Company: ${deal.company}`,
+    `Deal Stage: ${deal.stage}`,
+    deal.amount != null ? `Contract Value: $${deal.amount.toLocaleString()}` : null,
+    deal.renewalDate ? `Renewal Date: ${deal.renewalDate}` : null,
+  ].filter(Boolean).join('\n');
+
+  const contactCtx = [
+    `Contact: ${contact.name}${contact.title ? ` (${contact.title})` : ''}`,
+    `Last Login: ${contact.lastLogin ?? 'never'}`,
+    `Engagement Tier: ${contact.tier}`,
+  ].join('\n');
+
+  const mixpanelCtx = mixpanel
+    ? `\nMixpanel (60 days): logins=${mixpanel.events['loginSuccess'] ?? 0}, exports=${mixpanel.events['exportButtonClicked'] ?? 0}, searches=${mixpanel.events['TopSearchSubmit'] ?? 0}` +
+      (mixpanel.healthSignals.length ? `\nSignals: ${mixpanel.healthSignals.join('; ')}` : '')
+    : '';
+
+  const instructions: Record<EmailDraftContext['type'], string> = {
+    inactive_user: `Write a short, warm re-engagement email to ${contact.name} at ${deal.company}. They haven't logged into Podchaser recently (tier: ${contact.tier}). Offer help, mention a relevant feature, and include a clear call to action. Under 150 words.`,
+    open_seats: `Write a short, friendly email to ${contact.name} at ${deal.company} noting that their account has unused seats. Ask if anyone else on their team would benefit from Podchaser access. Under 120 words.`,
+    renewal: `Write a professional renewal discussion email to ${contact.name} at ${deal.company}. Contract renews${deal.renewalDate ? ` on ${deal.renewalDate}` : ' soon'}. Express appreciation, summarise value, and open a renewal conversation. Under 150 words.`,
+  };
+
+  const prompt = `You are a Customer Success manager at Podchaser. ${instructions[type]}
+
+${dealCtx}
+${contactCtx}${mixpanelCtx}
+
+Rules: Warm but professional. No markdown. No subject line — email body only. Never fabricate data not provided above.`;
 
   const raw = await callMiniMax(prompt);
   return stripThinkingTags(raw);
