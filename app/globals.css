@@ -16,6 +16,11 @@
   --color-brand-yellow: #FFEF70;
   --color-brand-mint: #2BDA9F;
   --color-brand-cyan: #0DAAC9;
+
+  /* Modern Intelligence design system */
+  --color-deep-violet: #2D034F;
+  --color-brand-magenta: #FF007A;
+  --color-insight-yellow: #FFD700;
 }
 
 body {
