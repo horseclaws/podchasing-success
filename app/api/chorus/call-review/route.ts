@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { fetchCallListByRep, fetchCallsByRep, fetchSingleCallById } from '@/lib/chorus';
+import { fetchCallListByRep, fetchCallsByRep, fetchSingleCallById, debugEngagementFields } from '@/lib/chorus';
 import type { ChorusCallMeta } from '@/lib/chorus';
 import { generateCallReview } from '@/lib/minimax';
 
@@ -16,6 +16,12 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const limitParam = Number(searchParams.get('limit'));
   const limit = [10, 20].includes(limitParam) ? limitParam : 10;
+
+  // --- Mode: debug (inspect raw Chorus field names) ---
+  if (searchParams.get('mode') === 'debug') {
+    const fields = await debugEngagementFields();
+    return NextResponse.json({ fields, emailUsed: email });
+  }
 
   // --- Mode: list only (fast, no transcripts) ---
   if (searchParams.get('mode') === 'list') {
