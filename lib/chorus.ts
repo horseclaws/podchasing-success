@@ -48,13 +48,26 @@ export async function fetchRecentCallTranscripts(accountName: string, limit: num
 }
 
 export async function fetchCallsByRep(repEmail: string, limit: number): Promise<ChorusCall[]> {
+  // Try owner_email first (most common Chorus v3 param), fall back to user_email
+  // engagement_type: 'meeting' matches how the existing account-based fetch works
   const params = new URLSearchParams({
-    user_email: repEmail,
-    engagement_type: 'call',
+    owner_email: repEmail,
+    engagement_type: 'meeting',
     limit: String(limit),
   });
-  const data = await chorusGetV3(`/engagements?${params}`);
-  const engagements: Array<Record<string, unknown>> = data.engagements ?? data.results ?? [];
+  let data = await chorusGetV3(`/engagements?${params}`);
+  let engagements: Array<Record<string, unknown>> = data.engagements ?? data.results ?? [];
+
+  // If no results, retry with user_email param
+  if (engagements.length === 0) {
+    const params2 = new URLSearchParams({
+      user_email: repEmail,
+      engagement_type: 'meeting',
+      limit: String(limit),
+    });
+    data = await chorusGetV3(`/engagements?${params2}`);
+    engagements = data.engagements ?? data.results ?? [];
+  }
 
   return Promise.all(
     engagements.slice(0, limit).map(async (e) => fetchEngagement(e, 2000))

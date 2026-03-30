@@ -19,13 +19,13 @@ export async function GET(req: NextRequest) {
   try {
     const calls = await fetchCallsByRep(email, limit);
     if (calls.length === 0) {
-      return NextResponse.json({ review: null, callCount: 0 });
+      return NextResponse.json({ review: null, callCount: 0, debug: { emailUsed: email } });
     }
 
     const review = await generateCallReview(calls, session.user.name ?? 'the rep');
-    return NextResponse.json({ review, callCount: calls.length });
+    return NextResponse.json({ review, callCount: calls.length, debug: { emailUsed: email } });
   } catch (e) {
     console.error('[chorus/call-review]', e);
-    return NextResponse.json({ error: 'Failed to generate review' }, { status: 502 });
+    return NextResponse.json({ error: 'Failed to generate review', debug: { emailUsed: email } }, { status: 502 });
   }
 }
