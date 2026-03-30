@@ -214,6 +214,80 @@ Rules: Health tiers are Active/Drifting/At Risk only. Never fabricate data. If a
   return stripThinkingTags(raw);
 }
 
+export interface CallReviewSection {
+  strengths: string[];
+  areasToDevlop: string[];
+  focusForNext: string[];
+  overallNote: string;
+}
+
+export async function generateCallReview(
+  calls: Array<{ title: string; date: string; transcript: string }>,
+  repName: string,
+): Promise<CallReviewSection> {
+  const callsText = calls
+    .map((c, i) => {
+      const d = c.date ? new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown date';
+      return `--- Call ${i + 1}: ${c.title} (${d}) ---\n${c.transcript || '(no transcript available)'}`;
+    })
+    .join('\n\n');
+
+  const prompt = `You are an expert sales coach specialising in consultative customer success and SaaS onboarding. Review these ${calls.length} call transcripts from ${repName} and provide honest, specific, encouraging coaching feedback.
+
+${callsText}
+
+Evaluate across four dimensions:
+1. DISCOVERY QUALITY — Did the rep ask open questions to understand the client's goals before presenting solutions? Did they listen and adapt?
+2. CONSULTATIVE DEPTH — Did they connect product capabilities to the client's specific situation, or did they present features generically?
+3. COMMITMENT & CLARITY — Did they close with clear next steps, defined ownership, and a measurable success metric?
+4. PRODUCT ACTIVATION — Did they secure a specific workflow commitment from the client before the call ended?
+
+Respond using EXACTLY this format. Cite specific moments from the transcripts where possible. Be direct but constructive — this is a coaching tool, not a performance review.
+
+STRENGTHS:
+- [specific observed behaviour with a call example]
+- [another strength]
+
+AREAS TO DEVELOP:
+- [specific, actionable improvement with a suggestion for how to do it differently]
+- [another area]
+
+FOCUS FOR NEXT CALL:
+- [one concrete technique or question to try on the next call]
+
+OVERALL COACHING NOTE:
+[2-3 sentences of honest, encouraging summary that a good coach would actually say]`;
+
+  const raw = await callMiniMax(prompt);
+  const text = stripThinkingTags(raw);
+  return parseCallReview(text);
+}
+
+function parseCallReview(text: string): CallReviewSection {
+  const strengths: string[] = [];
+  const areasToDevlop: string[] = [];
+  const focusForNext: string[] = [];
+  let overallNote = '';
+  let current: string[] | 'overall' | null = null;
+
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (/^STRENGTHS:/i.test(trimmed)) { current = strengths; continue; }
+    if (/^AREAS TO DEVELOP:/i.test(trimmed)) { current = areasToDevlop; continue; }
+    if (/^FOCUS FOR NEXT CALL:/i.test(trimmed)) { current = focusForNext; continue; }
+    if (/^OVERALL COACHING NOTE:/i.test(trimmed)) { current = 'overall'; continue; }
+
+    if (current === 'overall') {
+      if (trimmed) overallNote += (overallNote ? ' ' : '') + trimmed;
+    } else if (Array.isArray(current) && trimmed.startsWith('- ')) {
+      const bullet = trimmed.slice(2).trim();
+      if (bullet) current.push(bullet);
+    }
+  }
+
+  return { strengths, areasToDevlop, focusForNext, overallNote };
+}
+
 export async function generateEmailDraft(ctx: EmailDraftContext): Promise<string> {
   const { type, deal, contact, mixpanel } = ctx;
 
