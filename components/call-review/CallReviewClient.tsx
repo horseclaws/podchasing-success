@@ -42,18 +42,21 @@ export default function CallReviewClient({ repName }: Props) {
   const [limit, setLimit] = useState(10);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailUsed, setEmailUsed] = useState('');
   const [result, setResult] = useState<{ review: CallReviewSection; callCount: number } | null>(null);
 
   async function generate() {
     setLoading(true);
     setError('');
     setResult(null);
+    setEmailUsed('');
     try {
       const res = await fetch(`/api/chorus/call-review?limit=${limit}`);
       const data = await res.json();
+      if (data.debug?.emailUsed) setEmailUsed(data.debug.emailUsed);
       if (!res.ok) throw new Error(data.error || 'Failed to generate review');
       if (!data.review) {
-        setError('No calls found for your account in Chorus.');
+        setError('No calls found in Chorus for this account.');
         return;
       }
       setResult({ review: data.review, callCount: data.callCount });
@@ -116,6 +119,10 @@ export default function CallReviewClient({ repName }: Props) {
       )}
 
       {/* Results */}
+      {emailUsed && !loading && (
+        <p className="text-xs text-gray-400">Searching Chorus as: <span className="font-mono">{emailUsed}</span></p>
+      )}
+
       {result && !loading && (
         <div className="space-y-4">
           <p className="text-xs text-gray-400">
