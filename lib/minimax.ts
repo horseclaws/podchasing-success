@@ -226,22 +226,15 @@ export async function generateCallReview(
   calls: Array<{ title: string; date: string; transcript: string }>,
   repName: string,
 ): Promise<CallReviewSection> {
-  const callIndex = calls.map((c, i) => {
-    const d = c.date ? new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown date';
-    return `  Call ${i + 1}: ${c.title} (${d})`;
-  }).join('\n');
+  const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown date';
 
   const callsText = calls
-    .map((c, i) => {
-      const d = c.date ? new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown date';
-      return `--- Call ${i + 1}: ${c.title} (${d}) ---\n${c.transcript || '(no transcript available)'}`;
-    })
+    .map(c => `--- ${c.title} · ${fmtDate(c.date)} ---\n${c.transcript || '(no transcript available)'}`)
     .join('\n\n');
 
   const prompt = `You are an expert sales coach specialising in consultative customer success and SaaS onboarding. Review these ${calls.length} call transcripts from ${repName} and provide honest, specific, encouraging coaching feedback.
 
-Call index (use the account name and date when referencing a specific call — never just "Call 8"):
-${callIndex}
+Important: When referencing a specific call, always use the account name and date (e.g. "In the Pogo call on Mar 14..."). Never use generic labels like "Call 8" or "Call 1".
 
 ${callsText}
 

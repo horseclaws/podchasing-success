@@ -47,31 +47,53 @@ export async function fetchRecentCallTranscripts(accountName: string, limit: num
   );
 }
 
-export async function fetchCallsByRep(repEmail: string, limit: number): Promise<ChorusCall[]> {
-  // Try owner_email first (most common Chorus v3 param), fall back to user_email
-  // engagement_type: 'meeting' matches how the existing account-based fetch works
-  const params = new URLSearchParams({
-    owner_email: repEmail,
-    engagement_type: 'meeting',
-    limit: String(limit),
-  });
+async function fetchEngagementsByRep(repEmail: string, limit: number): Promise<Array<Record<string, unknown>>> {
+  const params = new URLSearchParams({ owner_email: repEmail, engagement_type: 'meeting', limit: String(limit) });
   let data = await chorusGetV3(`/engagements?${params}`);
   let engagements: Array<Record<string, unknown>> = data.engagements ?? data.results ?? [];
 
-  // If no results, retry with user_email param
   if (engagements.length === 0) {
-    const params2 = new URLSearchParams({
-      user_email: repEmail,
-      engagement_type: 'meeting',
-      limit: String(limit),
-    });
+    const params2 = new URLSearchParams({ user_email: repEmail, engagement_type: 'meeting', limit: String(limit) });
     data = await chorusGetV3(`/engagements?${params2}`);
     engagements = data.engagements ?? data.results ?? [];
   }
+  return engagements.slice(0, limit);
+}
 
-  return Promise.all(
-    engagements.slice(0, limit).map(async (e) => fetchEngagement(e, 2000))
-  );
+export interface ChorusCallMeta {
+  id: string;
+  title: string;
+  date: string;
+  durationSecs: number;
+}
+
+export async function fetchCallListByRep(repEmail: string, limit: number): Promise<ChorusCallMeta[]> {
+  const engagements = await fetchEngagementsByRep(repEmail, limit);
+  return engagements.map(e => {
+    const rawDate = e.date_time ?? e.date ?? e.start_time ?? e.created_at ?? '';
+    const dateStr = typeof rawDate === 'number' ? new Date(rawDate * 1000).toISOString() : String(rawDate);
+    return {
+      id: String(e.engagement_id ?? e.id ?? ''),
+      title: String(e.title ?? e.name ?? e.account_name ?? 'Untitled call'),
+      date: dateStr,
+      durationSecs: Number(e.duration ?? e.duration_secs ?? 0),
+    };
+  });
+}
+
+export async function fetchCallsByRep(repEmail: string, limit: number): Promise<ChorusCall[]> {
+  const engagements = await fetchEngagementsByRep(repEmail, limit);
+  return Promise.all(engagements.map(async (e) => fetchEngagement(e, 2000)));
+}
+
+export async function fetchSingleCallById(callId: string, meta: ChorusCallMeta): Promise<ChorusCall> {
+  let transcript = '';
+  try {
+    const t = await chorusGetV1(`/conversations/${callId}`);
+    const utterances: Array<{ snippet?: string }> = t?.data?.attributes?.recording?.utterances ?? [];
+    transcript = utterances.map(u => u.snippet ?? '').filter(Boolean).join(' ').slice(0, 6000);
+  } catch { /* non-fatal */ }
+  return { ...meta, participants: [], transcript };
 }
 
 async function fetchEngagement(e: Record<string, unknown>, transcriptLimit: number): Promise<ChorusCall> {
