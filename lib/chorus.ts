@@ -74,7 +74,9 @@ async function fetchEngagementsByRep(repEmail: string, limit: number): Promise<A
   const data = await chorusGetV3(`/engagements?${params}`);
   const all: Array<Record<string, unknown>> = data.engagements ?? data.results ?? [];
 
-  const filtered = all.filter(e => engagementBelongsToRep(e, repEmail));
+  const filtered = all
+    .filter(e => engagementBelongsToRep(e, repEmail))
+    .filter(e => !String(e.title ?? e.name ?? e.account_name ?? '').toLowerCase().includes('acast'));
   return filtered.slice(0, limit);
 }
 
