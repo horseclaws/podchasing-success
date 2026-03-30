@@ -3,11 +3,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const tabs = [
-  { href: '/client-health', label: 'Client Health' },
-  { href: '/chart-history', label: 'Chart History' },
-  { href: '/guest-finder', label: 'Guest Finder' },
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/team', label: 'Team' },
+  { href: '/client-health', label: 'Health Reports' },
+  { href: '/chart-history', label: 'Chart History' },
+  { href: '/guest-finder', label: 'Find Me Podcasts' },
+  { href: '/team', label: 'Settings' },
 ];
 
 export default function Sidebar() {

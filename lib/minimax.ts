@@ -231,13 +231,13 @@ export async function generateEmailDraft(ctx: EmailDraftContext): Promise<string
   ].join('\n');
 
   const mixpanelCtx = mixpanel
-    ? `\nMixpanel (60 days): logins=${mixpanel.events['loginSuccess'] ?? 0}, exports=${mixpanel.events['exportButtonClicked'] ?? 0}, searches=${mixpanel.events['TopSearchSubmit'] ?? 0}` +
+    ? `\nProduct activity (60 days): logins=${mixpanel.events['loginSuccess'] ?? 0}, exports=${mixpanel.events['exportButtonClicked'] ?? 0}, searches=${mixpanel.events['TopSearchSubmit'] ?? 0}` +
       (mixpanel.healthSignals.length ? `\nSignals: ${mixpanel.healthSignals.join('; ')}` : '')
     : '';
 
   const instructions: Record<EmailDraftContext['type'], string> = {
-    inactive_user: `Write a short, warm re-engagement email to ${contact.name} at ${deal.company}. They haven't logged into Podchaser recently (tier: ${contact.tier}). Offer help, mention a relevant feature, and include a clear call to action. Under 150 words.`,
-    open_seats: `Write a short, friendly email to ${contact.name} at ${deal.company} noting that their account has unused seats. Ask if anyone else on their team would benefit from Podchaser access. Under 120 words.`,
+    inactive_user: `Write a short, casual re-engagement email to ${contact.name} at ${deal.company}. They haven't been active on Podchaser recently. Skip the pleasantries — get straight to the point. The goal is to get them back in the product. Offer a quick check-in or call to help. Under 80 words.`,
+    open_seats: `Write a short, direct email to ${contact.name} at ${deal.company}. Their account has open seats that aren't being used. Ask if anyone else on their team should have access. No opener pleasantries — keep it brief and helpful. Under 80 words.`,
     renewal: `Write a professional renewal discussion email to ${contact.name} at ${deal.company}. Contract renews${deal.renewalDate ? ` on ${deal.renewalDate}` : ' soon'}. Express appreciation, summarise value, and open a renewal conversation. Under 150 words.`,
   };
 
@@ -246,7 +246,7 @@ export async function generateEmailDraft(ctx: EmailDraftContext): Promise<string
 ${dealCtx}
 ${contactCtx}${mixpanelCtx}
 
-Rules: Warm but professional. No markdown. No subject line — email body only. Never fabricate data not provided above.`;
+Rules: Casual and human — write like a real person, not a marketing template. No filler openers ("I hope you're doing well", "Hope this finds you", etc). No markdown. No subject line — email body only. Never fabricate data not provided above.`;
 
   const raw = await callMiniMax(prompt);
   return stripThinkingTags(raw);

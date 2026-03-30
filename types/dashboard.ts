@@ -29,7 +29,7 @@ export interface DealWithContacts extends DashboardDeal {
 }
 
 export interface DealQuote {
-  status: 'draft' | 'sent' | 'accepted';
+  status: 'draft' | 'sent' | 'accepted' | 'expired';
   amount: number | null;
   percentChange: number | null;
 }
@@ -37,6 +37,19 @@ export interface DealQuote {
 export interface DealWithQuote extends DealWithContacts {
   quote: DealQuote | null;
   daysUntilRenewal: number;
+}
+
+export interface RenewalPipelineBucket {
+  count: number;
+  amount: number;
+}
+
+export interface TopAccount {
+  id: string;
+  name: string;
+  amount: number;
+  contractEndDate: string | null;
+  stage: string;
 }
 
 export interface SummaryData {
@@ -48,4 +61,10 @@ export interface SummaryData {
   ghostContacts: number;
   byStage: Record<string, number>;
   byBusinessType: Record<string, number>;
+  // New insight fields
+  seatUtilizationPct: number;
+  renewalPipeline: { d30: RenewalPipelineBucket; d60: RenewalPipelineBucket; d90: RenewalPipelineBucket };
+  quoteCoverage: { withQuote: number; total: number };
+  renewalsByMonth: Array<{ label: string; count: number; amount: number }>;
+  topAccounts: TopAccount[];
 }

@@ -45,8 +45,11 @@ export function cacheAge(key: string): number | null {
   }
 }
 
+// Increment CACHE_VERSION whenever SummaryData shape changes to auto-bust stale localStorage
+const CACHE_VERSION = 2;
+
 export function dashboardCacheKey(tab: string, ownerId: string, days?: number): string {
   return days != null
-    ? `dashboard:${tab}:${ownerId}:${days}`
-    : `dashboard:${tab}:${ownerId}`;
+    ? `dashboard:v${CACHE_VERSION}:${tab}:${ownerId}:${days}`
+    : `dashboard:v${CACHE_VERSION}:${tab}:${ownerId}`;
 }
