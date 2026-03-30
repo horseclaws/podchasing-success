@@ -226,6 +226,11 @@ export async function generateCallReview(
   calls: Array<{ title: string; date: string; transcript: string }>,
   repName: string,
 ): Promise<CallReviewSection> {
+  const callIndex = calls.map((c, i) => {
+    const d = c.date ? new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown date';
+    return `  Call ${i + 1}: ${c.title} (${d})`;
+  }).join('\n');
+
   const callsText = calls
     .map((c, i) => {
       const d = c.date ? new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown date';
@@ -234,6 +239,9 @@ export async function generateCallReview(
     .join('\n\n');
 
   const prompt = `You are an expert sales coach specialising in consultative customer success and SaaS onboarding. Review these ${calls.length} call transcripts from ${repName} and provide honest, specific, encouraging coaching feedback.
+
+Call index (use the account name and date when referencing a specific call — never just "Call 8"):
+${callIndex}
 
 ${callsText}
 
