@@ -47,17 +47,35 @@ export async function fetchRecentCallTranscripts(accountName: string, limit: num
   );
 }
 
-async function fetchEngagementsByRep(repEmail: string, limit: number): Promise<Array<Record<string, unknown>>> {
-  const params = new URLSearchParams({ owner_email: repEmail, engagement_type: 'meeting', limit: String(limit) });
-  let data = await chorusGetV3(`/engagements?${params}`);
-  let engagements: Array<Record<string, unknown>> = data.engagements ?? data.results ?? [];
+function engagementBelongsToRep(e: Record<string, unknown>, repEmail: string): boolean {
+  const email = repEmail.toLowerCase();
 
-  if (engagements.length === 0) {
-    const params2 = new URLSearchParams({ user_email: repEmail, engagement_type: 'meeting', limit: String(limit) });
-    data = await chorusGetV3(`/engagements?${params2}`);
-    engagements = data.engagements ?? data.results ?? [];
-  }
-  return engagements.slice(0, limit);
+  // Check owner/host fields first
+  const owner = String(e.owner_email ?? e.host_email ?? e.created_by_email ?? '').toLowerCase();
+  if (owner && owner === email) return true;
+
+  // Check participants array — Chorus may use [{email}, ...] or [string, ...]
+  const parts = (e.participants as unknown[]) ?? [];
+  return parts.some(p => {
+    if (typeof p === 'string') return p.toLowerCase() === email;
+    if (typeof p === 'object' && p !== null) {
+      const o = p as Record<string, unknown>;
+      return String(o.email ?? o.user_email ?? '').toLowerCase() === email;
+    }
+    return false;
+  });
+}
+
+async function fetchEngagementsByRep(repEmail: string, limit: number): Promise<Array<Record<string, unknown>>> {
+  // Fetch a larger pool (up to 5×) since Chorus ignores email filter params —
+  // we filter locally by participant/owner email instead.
+  const fetchLimit = Math.min(limit * 5, 100);
+  const params = new URLSearchParams({ engagement_type: 'meeting', limit: String(fetchLimit) });
+  const data = await chorusGetV3(`/engagements?${params}`);
+  const all: Array<Record<string, unknown>> = data.engagements ?? data.results ?? [];
+
+  const filtered = all.filter(e => engagementBelongsToRep(e, repEmail));
+  return filtered.slice(0, limit);
 }
 
 export interface ChorusCallMeta {
