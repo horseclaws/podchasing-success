@@ -129,6 +129,20 @@ export default function CallReviewClient({ repName }: Props) {
             Review based on {result.callCount} call{result.callCount !== 1 ? 's' : ''} · {repName}
           </p>
 
+          {result.review.bestMoment && (
+            <div className="rounded-2xl p-5 border border-brand-purple/20 bg-gradient-to-br from-violet-50 to-white">
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-purple mb-3 flex items-center gap-1.5">
+                <span>★</span> Best Moment
+              </p>
+              <blockquote className="text-sm text-gray-800 italic leading-relaxed border-l-2 border-brand-purple pl-3 mb-2">
+                &ldquo;{result.review.bestMoment.quote}&rdquo;
+              </blockquote>
+              {result.review.bestMoment.context && (
+                <p className="text-xs text-gray-500 mt-2">{result.review.bestMoment.context}</p>
+              )}
+            </div>
+          )}
+
           <SectionCard
             title="Strengths"
             bullets={result.review.strengths}

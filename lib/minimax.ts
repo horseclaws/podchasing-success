@@ -219,6 +219,7 @@ export interface CallReviewSection {
   areasToDevlop: string[];
   focusForNext: string[];
   overallNote: string;
+  bestMoment: { quote: string; context: string } | null;
 }
 
 export async function generateCallReview(
@@ -242,7 +243,11 @@ Evaluate across four dimensions:
 3. COMMITMENT & CLARITY — Did they close with clear next steps, defined ownership, and a measurable success metric?
 4. PRODUCT ACTIVATION — Did they secure a specific workflow commitment from the client before the call ended?
 
-Respond using EXACTLY this format. Cite specific moments from the transcripts where possible. Be direct but constructive — this is a coaching tool, not a performance review.
+Respond using EXACTLY this format. Cite specific moments from the transcripts where possible. Be direct but constructive — this is a coaching tool, not a performance review. Do not use markdown formatting (no asterisks, no bold, no italics).
+
+BEST MOMENT:
+QUOTE: [a verbatim or near-verbatim quote from the rep or client that stands out as genuinely great — a moment of real connection, smart question, or strong response]
+CONTEXT: [one sentence explaining why this moment matters]
 
 STRENGTHS:
 - [specific observed behaviour with a call example]
@@ -263,29 +268,45 @@ OVERALL COACHING NOTE:
   return parseCallReview(text);
 }
 
+function stripMd(s: string): string {
+  return s.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').trim();
+}
+
 function parseCallReview(text: string): CallReviewSection {
   const strengths: string[] = [];
   const areasToDevlop: string[] = [];
   const focusForNext: string[] = [];
   let overallNote = '';
-  let current: string[] | 'overall' | null = null;
+  let bestQuote = '';
+  let bestContext = '';
+  let current: string[] | 'overall' | 'best' | null = null;
 
   for (const line of text.split('\n')) {
     const trimmed = line.trim();
+    if (/^BEST MOMENT:/i.test(trimmed)) { current = 'best'; continue; }
     if (/^STRENGTHS:/i.test(trimmed)) { current = strengths; continue; }
     if (/^AREAS TO DEVELOP:/i.test(trimmed)) { current = areasToDevlop; continue; }
     if (/^FOCUS FOR NEXT CALL:/i.test(trimmed)) { current = focusForNext; continue; }
     if (/^OVERALL COACHING NOTE:/i.test(trimmed)) { current = 'overall'; continue; }
 
-    if (current === 'overall') {
-      if (trimmed) overallNote += (overallNote ? ' ' : '') + trimmed;
+    if (current === 'best') {
+      if (/^QUOTE:/i.test(trimmed)) bestQuote = stripMd(trimmed.replace(/^QUOTE:\s*/i, ''));
+      else if (/^CONTEXT:/i.test(trimmed)) bestContext = stripMd(trimmed.replace(/^CONTEXT:\s*/i, ''));
+    } else if (current === 'overall') {
+      if (trimmed) overallNote += (overallNote ? ' ' : '') + stripMd(trimmed);
     } else if (Array.isArray(current) && trimmed.startsWith('- ')) {
-      const bullet = trimmed.slice(2).trim();
+      const bullet = stripMd(trimmed.slice(2));
       if (bullet) current.push(bullet);
     }
   }
 
-  return { strengths, areasToDevlop, focusForNext, overallNote };
+  return {
+    strengths,
+    areasToDevlop,
+    focusForNext,
+    overallNote,
+    bestMoment: bestQuote ? { quote: bestQuote, context: bestContext } : null,
+  };
 }
 
 export async function generateEmailDraft(ctx: EmailDraftContext): Promise<string> {
