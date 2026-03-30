@@ -12,7 +12,6 @@ function headers() {
 
 export interface ChorusCall {
   id: string;
-  title: string;
   date: string;
   durationSecs: number;
   participants: string[];
@@ -43,50 +42,33 @@ export async function fetchRecentCallTranscripts(accountName: string, limit: num
   const engagements: Array<Record<string, unknown>> = data.engagements ?? data.results ?? [];
 
   return Promise.all(
-    engagements.map(async (e) => fetchEngagement(e, 3000))
+    engagements.map(async (e) => {
+      const engagementId = String(e.engagement_id ?? e.id ?? '');
+      let transcript = '';
+      try {
+        const t = await chorusGetV1(`/conversations/${engagementId}`);
+        const utterances: Array<{ snippet?: string }> =
+          t?.data?.attributes?.recording?.utterances ?? [];
+        transcript = utterances
+          .map((u) => u.snippet ?? '')
+          .filter(Boolean)
+          .join(' ');
+      } catch {
+        // non-fatal: transcript unavailable for this engagement
+      }
+      const rawDate = e.date_time ?? e.date ?? e.start_time ?? e.created_at ?? '';
+      const dateStr = typeof rawDate === 'number'
+        ? new Date(rawDate * 1000).toISOString()
+        : String(rawDate);
+      return {
+        id: engagementId,
+        date: dateStr,
+        durationSecs: Number(e.duration ?? e.duration_secs ?? 0),
+        participants: (e.participants as string[] | undefined) ?? [],
+        transcript: transcript.slice(0, 3000),
+      };
+    })
   );
-}
-
-export async function fetchCallsByRep(repEmail: string, limit: number): Promise<ChorusCall[]> {
-  const params = new URLSearchParams({
-    user_email: repEmail,
-    engagement_type: 'call',
-    limit: String(limit),
-  });
-  const data = await chorusGetV3(`/engagements?${params}`);
-  const engagements: Array<Record<string, unknown>> = data.engagements ?? data.results ?? [];
-
-  return Promise.all(
-    engagements.slice(0, limit).map(async (e) => fetchEngagement(e, 2000))
-  );
-}
-
-async function fetchEngagement(e: Record<string, unknown>, transcriptLimit: number): Promise<ChorusCall> {
-  const engagementId = String(e.engagement_id ?? e.id ?? '');
-  let transcript = '';
-  try {
-    const t = await chorusGetV1(`/conversations/${engagementId}`);
-    const utterances: Array<{ snippet?: string }> =
-      t?.data?.attributes?.recording?.utterances ?? [];
-    transcript = utterances
-      .map((u) => u.snippet ?? '')
-      .filter(Boolean)
-      .join(' ');
-  } catch {
-    // non-fatal: transcript unavailable for this engagement
-  }
-  const rawDate = e.date_time ?? e.date ?? e.start_time ?? e.created_at ?? '';
-  const dateStr = typeof rawDate === 'number'
-    ? new Date(rawDate * 1000).toISOString()
-    : String(rawDate);
-  return {
-    id: engagementId,
-    title: String(e.title ?? e.name ?? e.account_name ?? 'Untitled call'),
-    date: dateStr,
-    durationSecs: Number(e.duration ?? e.duration_secs ?? 0),
-    participants: (e.participants as string[] | undefined) ?? [],
-    transcript: transcript.slice(0, transcriptLimit),
-  };
 }
 
 export async function extractChorusInsights(

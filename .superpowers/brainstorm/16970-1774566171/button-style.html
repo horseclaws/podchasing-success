@@ -1,0 +1,50 @@
+<h2>Primary action buttons</h2>
+<p class="subtitle">Which color should drive the main CTAs across the app? (Load Mixpanel, Generate AI Summary, Run, etc.)</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Keep purple</h3>
+      <p>All primary buttons stay <code>#4A027D</code>. Consistent with the nav. Magenta used only for <code>CalloutBlock</code> borders and keyword highlights.</p>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button style="background:#4A027D;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:default">Load Mixpanel</button>
+        <button style="background:#4A027D;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:default">Generate AI Summary</button>
+        <button style="background:#4A027D;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:default">Run</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Magenta CTAs</h3>
+      <p>Primary actions switch to <code>#FF007A</code>. Creates a clear visual hierarchy — purple = nav/structure, magenta = action.</p>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button style="background:#FF007A;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:default">Load Mixpanel</button>
+        <button style="background:#FF007A;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:default">Generate AI Summary</button>
+        <button style="background:#FF007A;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:default">Run</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Split by intent</h3>
+      <p>Magenta for high-signal actions (Generate AI Summary, Save to HubSpot). Purple for utility actions (Load Mixpanel, Load News, Run).</p>
+      <div style="margin-top:12px">
+        <div style="font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">High-signal</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <button style="background:#FF007A;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:default">Generate AI Summary</button>
+          <button style="background:#FF007A;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:default">Save to HubSpot</button>
+        </div>
+        <div style="font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Utility</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button style="background:#4A027D;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:default">Load Mixpanel</button>
+          <button style="background:#4A027D;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:default">Run</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
