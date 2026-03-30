@@ -1,10 +1,12 @@
 // components/dashboard/OverviewTab.tsx
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import type { SummaryData, LoginTier } from '@/lib/dashboard';
+import type { SummaryData, LoginTier, TopAccount } from '@/lib/dashboard';
 import { cacheGet, cacheSet, cacheClear, cacheAge, dashboardCacheKey } from '@/lib/dashboard-cache';
 import SeatTierStat from './SeatTierStat';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+
+const PORTAL_ID = process.env.NEXT_PUBLIC_HUBSPOT_PORTAL_ID ?? '';
 
 function DistributionTile({ title, counts }: { title: string; counts: Record<string, number> }) {
   const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
@@ -25,6 +27,118 @@ function DistributionTile({ title, counts }: { title: string; counts: Record<str
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function SeatUtilizationBar({ pct, active, total }: { pct: number; active: number; total: number }) {
+  const color = pct >= 70 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-400' : 'bg-red-400';
+  return (
+    <div className="rounded-2xl p-4 bg-white border border-violet-100">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand-purple">Seat Utilization</p>
+        <span className="text-sm font-bold text-foreground">{pct}%</span>
+      </div>
+      <div className="h-2 rounded-full bg-violet-50 overflow-hidden">
+        <div className={`h-2 rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-xs text-gray-400 mt-1.5">{active.toLocaleString()} active users of {total.toLocaleString()} total seats</p>
+    </div>
+  );
+}
+
+function RenewalPipelineCard({ pipeline }: { pipeline: SummaryData['renewalPipeline'] }) {
+  const buckets = [
+    { label: '30 days', count: pipeline.d30.count, amount: pipeline.d30.amount },
+    { label: '60 days', count: pipeline.d60.count, amount: pipeline.d60.amount },
+    { label: '90 days', count: pipeline.d90.count, amount: pipeline.d90.amount },
+  ];
+  return (
+    <div className="rounded-2xl p-4 bg-white border border-violet-100">
+      <p className="text-xs font-semibold uppercase tracking-wide mb-3 text-brand-purple">Renewal Pipeline</p>
+      <div className="grid grid-cols-3 divide-x divide-violet-100">
+        {buckets.map(b => (
+          <div key={b.label} className="px-3 first:pl-0 last:pr-0">
+            <p className="text-xs text-gray-400">{b.label}</p>
+            <p className="text-lg font-bold text-foreground mt-0.5">${b.amount.toLocaleString()}</p>
+            <p className="text-xs text-gray-400">{b.count} deal{b.count !== 1 ? 's' : ''}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RenewalsByMonthCard({ months }: { months: SummaryData['renewalsByMonth'] }) {
+  const max = Math.max(...months.map(m => m.amount), 1);
+  return (
+    <div className="rounded-2xl p-4 bg-white border border-violet-100">
+      <p className="text-xs font-semibold uppercase tracking-wide mb-3 text-brand-purple">Upcoming Renewals</p>
+      <div className="grid grid-cols-3 gap-3">
+        {months.map(m => (
+          <div key={m.label} className="space-y-1.5">
+            <p className="text-xs font-medium text-gray-600">{m.label}</p>
+            <div className="h-1.5 rounded-full bg-violet-50">
+              <div className="h-1.5 rounded-full bg-brand-purple" style={{ width: `${(m.amount / max) * 100}%` }} />
+            </div>
+            <p className="text-sm font-bold text-foreground">${m.amount.toLocaleString()}</p>
+            <p className="text-xs text-gray-400">{m.count} deal{m.count !== 1 ? 's' : ''}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QuoteCoverageCard({ coverage }: { coverage: SummaryData['quoteCoverage'] }) {
+  const pct = coverage.total > 0 ? Math.round((coverage.withQuote / coverage.total) * 100) : 0;
+  const color = pct >= 70 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-400' : 'bg-red-400';
+  return (
+    <div className="rounded-2xl p-4 bg-white border border-violet-100">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand-purple">Quote Coverage</p>
+        <span className="text-sm font-bold text-foreground">{pct}%</span>
+      </div>
+      <div className="h-2 rounded-full bg-violet-50 overflow-hidden">
+        <div className={`h-2 rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-xs text-gray-400 mt-1.5">
+        {coverage.withQuote} of {coverage.total} deals renewing in 90d have a quote
+      </p>
+    </div>
+  );
+}
+
+function TopAccountsCard({ accounts }: { accounts: TopAccount[] }) {
+  return (
+    <div className="rounded-2xl p-4 bg-white border border-violet-100">
+      <p className="text-xs font-semibold uppercase tracking-wide mb-3 text-brand-purple">Top 10 Accounts by ARR</p>
+      <div className="space-y-1">
+        {accounts.map((a, i) => {
+          const renewDate = a.contractEndDate
+            ? new Date(a.contractEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+            : '—';
+          return (
+            <div key={a.id} className="flex items-center gap-3 py-1.5 border-b border-violet-50 last:border-0">
+              <span className="text-xs text-gray-300 w-4 shrink-0 text-right">{i + 1}</span>
+              <div className="flex-1 min-w-0">
+                <a
+                  href={`https://app.hubspot.com/contacts/${PORTAL_ID}/deal/${a.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-foreground hover:text-violet-700 transition-colors truncate block"
+                >
+                  {a.name}
+                </a>
+                <p className="text-xs text-gray-400">{a.stage} · renews {renewDate}</p>
+              </div>
+              <span className="text-xs font-semibold text-foreground shrink-0">
+                ${a.amount.toLocaleString()}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -76,6 +190,8 @@ export default function OverviewTab({ ownerId, onNavigateToSeats }: Props) {
           {ageMinutes != null ? `Updated ${ageMinutes}m ago · ` : ''}Refresh
         </button>
       </div>
+
+      {/* Top stats */}
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Total Deals', value: data.totalDeals },
@@ -88,6 +204,15 @@ export default function OverviewTab({ ownerId, onNavigateToSeats }: Props) {
           </div>
         ))}
       </div>
+
+      {/* Seat utilization */}
+      <SeatUtilizationBar
+        pct={data.seatUtilizationPct}
+        active={data.activeContacts}
+        total={data.totalSeats}
+      />
+
+      {/* Seat tier breakdown */}
       <div className="grid grid-cols-3 gap-3">
         {(['Active', 'Inactive', 'Ghost'] as LoginTier[]).map(tier => (
           <SeatTierStat
@@ -98,6 +223,22 @@ export default function OverviewTab({ ownerId, onNavigateToSeats }: Props) {
           />
         ))}
       </div>
+
+      {/* Renewal pipeline */}
+      {data.renewalPipeline && <RenewalPipelineCard pipeline={data.renewalPipeline} />}
+
+      {/* Upcoming by month + quote coverage */}
+      {(data.renewalsByMonth || data.quoteCoverage) && (
+        <div className="grid grid-cols-2 gap-3">
+          {data.renewalsByMonth && <RenewalsByMonthCard months={data.renewalsByMonth} />}
+          {data.quoteCoverage && <QuoteCoverageCard coverage={data.quoteCoverage} />}
+        </div>
+      )}
+
+      {/* Top accounts */}
+      {data.topAccounts?.length > 0 && <TopAccountsCard accounts={data.topAccounts} />}
+
+      {/* Distributions */}
       <div className="grid grid-cols-2 gap-3">
         <DistributionTile title="By Deal Stage" counts={data.byStage} />
         <DistributionTile title="By Business Type" counts={data.byBusinessType} />

@@ -18,6 +18,11 @@ const DRAFT_LABELS: Record<DraftType, string> = {
   renewal: 'Renewal',
 };
 
+// Types that are not yet ready — shown greyed out and non-selectable
+const DISABLED_DRAFT_TYPES = new Set<DraftType>(['renewal']);
+
+const ENGAGEMENT_APP_URL = 'https://ai.studio/apps/0257187b-c49f-49c8-806c-356fc68f4480?fullscreenApplet=true';
+
 interface Props {
   contact: DashboardContact;
   deal: Pick<DashboardDeal, 'id' | 'name' | 'stage' | 'amount' | 'contractEndDate'>;
@@ -155,19 +160,34 @@ export default function UserSidePanel({ contact, deal, onClose }: Props) {
           <section>
             <p className="text-xs font-semibold uppercase tracking-wide text-brand-purple mb-2">Generate Draft</p>
             <div className="flex gap-1 flex-wrap mb-3">
-              {(Object.keys(DRAFT_LABELS) as DraftType[]).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setDraftType(t)}
-                  className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
-                    draftType === t
-                      ? 'bg-brand-purple text-white'
-                      : 'bg-violet-50 text-brand-purple hover:bg-violet-100'
-                  }`}
-                >
-                  {DRAFT_LABELS[t]}
-                </button>
-              ))}
+              {(Object.keys(DRAFT_LABELS) as DraftType[]).map(t => {
+                const disabled = DISABLED_DRAFT_TYPES.has(t);
+                return (
+                  <button
+                    key={t}
+                    onClick={() => !disabled && setDraftType(t)}
+                    disabled={disabled}
+                    title={disabled ? 'Coming soon' : undefined}
+                    className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+                      disabled
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : draftType === t
+                        ? 'bg-brand-purple text-white'
+                        : 'bg-violet-50 text-brand-purple hover:bg-violet-100'
+                    }`}
+                  >
+                    {DRAFT_LABELS[t]}
+                  </button>
+                );
+              })}
+              <a
+                href={ENGAGEMENT_APP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs px-2.5 py-1 rounded-full font-medium bg-violet-50 text-brand-purple hover:bg-violet-100 transition-colors"
+              >
+                Engagement ↗
+              </a>
             </div>
             <button
               onClick={generateDraft}

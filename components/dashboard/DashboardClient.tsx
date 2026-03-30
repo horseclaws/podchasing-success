@@ -55,7 +55,7 @@ export default function DashboardClient({ isManager, hubspotOwnerId }: Props) {
         <RenewalsTab ownerId={ownerId} onContactClick={openPanel} />
       )}
       {tab === 'outreach' && (
-        <OutreachTab ownerId={ownerId} showOwnerColumn={isManager && ownerId === 'all'} />
+        <OutreachTab ownerId={ownerId} showOwnerColumn={isManager && ownerId === 'all'} onContactClick={openPanel} />
       )}
       {tab === 'seats' && (
         <SeatsTab

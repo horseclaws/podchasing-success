@@ -8,6 +8,8 @@ interface Props {
   onContactClick: (contact: DashboardContact, deal: Pick<DashboardDeal, 'id' | 'name' | 'stage' | 'amount' | 'contractEndDate'>) => void;
 }
 
+const PORTAL_ID = process.env.NEXT_PUBLIC_HUBSPOT_PORTAL_ID ?? '';
+
 export default function RenewalDealCard({ deal, onContactClick }: Props) {
   const renewalDate = deal.contractEndDate
     ? new Date(deal.contractEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -15,12 +17,20 @@ export default function RenewalDealCard({ deal, onContactClick }: Props) {
 
   const quoteStatus = deal.quote ? deal.quote.status : 'none';
   const dealSnap = { id: deal.id, name: deal.name, stage: deal.stage, amount: deal.amount, contractEndDate: deal.contractEndDate };
+  const hubspotUrl = `https://app.hubspot.com/contacts/${PORTAL_ID}/deal/${deal.id}`;
 
   return (
     <div className="rounded-2xl p-4 bg-white border border-violet-100">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-foreground">{deal.name}</p>
+          <a
+            href={hubspotUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold text-foreground hover:text-violet-700 transition-colors"
+          >
+            {deal.name}
+          </a>
           <p className="text-xs text-gray-500 mt-0.5">{deal.stage}</p>
         </div>
         <div className="text-right shrink-0">
@@ -34,13 +44,18 @@ export default function RenewalDealCard({ deal, onContactClick }: Props) {
           <span className="text-xs text-gray-600">${deal.amount.toLocaleString()}</span>
         )}
         <QuoteStatusChip status={quoteStatus} />
+        {deal.quote?.status === 'expired' && deal.quote.amount == null && (
+          <span className="text-xs text-gray-400">Quote expired</span>
+        )}
         {deal.quote?.amount != null && (
           <span className="text-xs text-gray-600">
             Quote: ${deal.quote.amount.toLocaleString()}
-            {deal.quote.percentChange != null && (
+            {deal.quote.percentChange != null ? (
               <span className={deal.quote.percentChange >= 0 ? 'text-emerald-600 ml-1' : 'text-red-500 ml-1'}>
                 ({deal.quote.percentChange >= 0 ? '+' : ''}{deal.quote.percentChange}%)
               </span>
+            ) : (
+              <span className="text-gray-400 ml-1">(—%)</span>
             )}
           </span>
         )}

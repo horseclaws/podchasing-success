@@ -3,7 +3,7 @@ import type { MixpanelUserActivity } from '@/lib/mixpanel';
 import type { LoginTier, DashboardContact } from '@/types/dashboard';
 
 // Re-export all plain types so the rest of the app imports from a single location
-export type { LoginTier, DashboardContact, DashboardDeal, DealWithContacts, DealQuote, DealWithQuote, SummaryData } from '@/types/dashboard';
+export type { LoginTier, DashboardContact, DashboardDeal, DealWithContacts, DealQuote, DealWithQuote, SummaryData, TopAccount, RenewalPipelineBucket } from '@/types/dashboard';
 
 export function loginTier(lastLoginDate: string | null): LoginTier {
   if (!lastLoginDate) return 'Ghost';

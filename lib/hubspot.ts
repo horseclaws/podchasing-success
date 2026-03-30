@@ -173,6 +173,24 @@ export async function pollDeals(
   return (result.results ?? []).map(mapDealToRaw);
 }
 
+/** Fetches all pages of a HubSpot deal search query. */
+async function searchAllDeals(body: Record<string, unknown>): Promise<Array<{ id: string; properties: Record<string, string | null> }>> {
+  const all: Array<{ id: string; properties: Record<string, string | null> }> = [];
+  let after: string | undefined;
+
+  do {
+    const page = await hubspotPost('/crm/v3/objects/deals/search', {
+      ...body,
+      limit: 100,
+      ...(after ? { after } : {}),
+    });
+    all.push(...(page.results ?? []));
+    after = page.paging?.next?.after;
+  } while (after);
+
+  return all;
+}
+
 /** All active deals for an owner (or all owners if ownerId is null). */
 export async function fetchDealsForDashboard(ownerId: string | null): Promise<DashboardDeal[]> {
   const filters: unknown[] = [
@@ -181,14 +199,13 @@ export async function fetchDealsForDashboard(ownerId: string | null): Promise<Da
   ];
   if (ownerId) filters.push({ propertyName: 'hubspot_owner_id', operator: 'EQ', value: ownerId });
 
-  const result = await hubspotPost('/crm/v3/objects/deals/search', {
+  const results = await searchAllDeals({
     filterGroups: [{ filters }],
     sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'DESCENDING' }],
     properties: DASHBOARD_PROPS,
-    limit: 100,
   });
 
-  return (result.results ?? []).map(mapDealToDashboard);
+  return results.map(mapDealToDashboard);
 }
 
 /** Deals whose contract_end_date falls within `days` from now. */
@@ -202,14 +219,13 @@ export async function fetchRenewingDeals(days: number, ownerId: string | null): 
   ];
   if (ownerId) filters.push({ propertyName: 'hubspot_owner_id', operator: 'EQ', value: ownerId });
 
-  const result = await hubspotPost('/crm/v3/objects/deals/search', {
+  const results = await searchAllDeals({
     filterGroups: [{ filters }],
     sorts: [{ propertyName: 'contract_end_date', direction: 'ASCENDING' }],
     properties: DASHBOARD_PROPS,
-    limit: 100,
   });
 
-  return (result.results ?? []).map(mapDealToDashboard);
+  return results.map(mapDealToDashboard);
 }
 
 /** Deals where last contacted date is older than `days` ago, OR never contacted. */
@@ -224,39 +240,62 @@ export async function fetchOutreachDeals(days: number, ownerId: string | null): 
     ...ownerFilter,
   ];
 
-  const result = await hubspotPost('/crm/v3/objects/deals/search', {
+  const results = await searchAllDeals({
     filterGroups: [
-      // Group 1: last contacted older than cutoff
       { filters: [...baseFilters, { propertyName: 'notes_last_contacted', operator: 'LT', value: String(cutoff) }] },
-      // Group 2: never contacted (property has no value)
       { filters: [...baseFilters, { propertyName: 'notes_last_contacted', operator: 'NOT_HAS_PROPERTY' }] },
     ],
     sorts: [{ propertyName: 'notes_last_contacted', direction: 'ASCENDING' }],
     properties: DASHBOARD_PROPS,
-    limit: 100,
   });
 
-  return (result.results ?? []).map(mapDealToDashboard);
+  return results.map(mapDealToDashboard);
 }
 
 export interface HubSpotQuote {
-  status: 'draft' | 'sent' | 'accepted';
+  status: 'draft' | 'sent' | 'accepted' | 'expired';
   amount: number | null;
   lastModified: string;
 }
 
-/** Returns the most recent quote for a deal, or null if none. */
+// HubSpot returns uppercase status values — map to our internal union
+export function mapQuoteStatus(raw: string): HubSpotQuote['status'] {
+  switch (raw.toUpperCase()) {
+    case 'PUBLISHED':
+    case 'EMAIL_SENT':
+    case 'PENDING_SIGNATURE':
+      return 'sent';
+    case 'SIGNED':
+      return 'accepted';
+    case 'EXPIRED':
+      return 'expired';
+    default:
+      // DRAFT, APPROVAL_NOT_NEEDED, PENDING_APPROVAL, APPROVED, REJECTED, etc.
+      return 'draft';
+  }
+}
+
+// Quotes older than this are considered stale across all quote functions
+export const QUOTE_STALENESS_MS = 90 * 24 * 60 * 60 * 1000;
+
+/** Returns the most recent quote for a deal, or null if none or all are older than 90 days. */
 export async function fetchDealQuotes(dealId: string): Promise<HubSpotQuote | null> {
   try {
     const assoc = await hubspotGet(`/crm/v3/objects/deals/${dealId}/associations/quotes`);
     const quoteIds: string[] = (assoc.results ?? []).map((r: { id: string }) => r.id);
     if (quoteIds.length === 0) return null;
 
-    const quotes = await Promise.all(
+    const settled = await Promise.allSettled(
       quoteIds.map(id =>
-        hubspotGet(`/crm/v3/objects/quotes/${id}?properties=hs_quote_status,hs_total,hs_lastmodifieddate`)
+        hubspotGet(`/crm/v3/objects/quotes/${id}?properties=hs_quote_status,hs_total,hs_lastmodifieddate,hs_createdate`)
       )
     );
+
+    const quotes = settled
+      .filter((r): r is PromiseFulfilledResult<{ properties: Record<string, string> }> => r.status === 'fulfilled')
+      .map(r => r.value);
+
+    if (quotes.length === 0) return null;
 
     const sorted = quotes.sort((a, b) =>
       new Date(b.properties.hs_lastmodifieddate ?? 0).getTime() -
@@ -264,13 +303,13 @@ export async function fetchDealQuotes(dealId: string): Promise<HubSpotQuote | nu
     );
 
     const q = sorted[0];
-    const raw = q.properties.hs_quote_status ?? '';
-    const status = (['draft', 'sent', 'accepted'] as const).includes(raw as never)
-      ? (raw as 'draft' | 'sent' | 'accepted')
-      : 'draft';
+    const mappedStatus = mapQuoteStatus(q.properties.hs_quote_status ?? '');
+    // Suppress quotes older than 90 days — no exceptions
+    const createDate = q.properties.hs_createdate ?? '';
+    if (createDate && Date.now() - new Date(createDate).getTime() > QUOTE_STALENESS_MS) return null;
 
     return {
-      status,
+      status: mappedStatus,
       amount: q.properties.hs_total != null && q.properties.hs_total !== ''
         ? parseFloat(q.properties.hs_total) : null,
       lastModified: q.properties.hs_lastmodifieddate ?? '',
@@ -320,15 +359,61 @@ export async function fetchContactsForDeal(dealId: string) {
   const contactIds: string[] = (assoc.results ?? []).map((r: { id: string }) => r.id);
   if (contactIds.length === 0) return [];
 
-  const contacts = await Promise.all(
+  const settled = await Promise.allSettled(
     contactIds.map((id) =>
       hubspotGet(`/crm/v3/objects/contacts/${id}?properties=firstname,lastname,email,last_login_date,pro_user,jobtitle`)
     )
   );
 
+  const contacts = settled
+    .filter((r): r is PromiseFulfilledResult<Record<string, unknown>> => r.status === 'fulfilled')
+    .map(r => r.value);
+
   return contacts
-    .filter((c) => c.properties.pro_user === 'true')
-    .map((c) => ({
+    .filter((c: Record<string, unknown>) => {
+      const props = c.properties as Record<string, string | null> | undefined;
+      return props?.pro_user === 'true' || props?.pro_user === 'yes';
+    })
+    .map((c: Record<string, unknown>) => {
+      const props = c.properties as Record<string, string | null>;
+      return {
+        id: c.id as string,
+        name: [props.firstname, props.lastname].filter(Boolean).join(' '),
+        email: props.email ?? '',
+        title: props.jobtitle ?? null,
+        lastLoginDate: props.last_login_date ?? null,
+      };
+    });
+}
+
+/**
+ * Batch-reads contacts by ID (max 100 per HubSpot batch request).
+ * Much more rate-limit-friendly than individual fetches for large deal lists.
+ */
+export async function fetchContactsBatch(
+  contactIds: string[]
+): Promise<Array<{ id: string; name: string; email: string; title: string | null; lastLoginDate: string | null }>> {
+  if (contactIds.length === 0) return [];
+
+  const CHUNK = 100;
+  const chunks: string[][] = [];
+  for (let i = 0; i < contactIds.length; i += CHUNK) chunks.push(contactIds.slice(i, i + CHUNK));
+
+  const results = await Promise.allSettled(
+    chunks.map(ids =>
+      hubspotPost('/crm/v3/objects/contacts/batch/read', {
+        properties: ['firstname', 'lastname', 'email', 'last_login_date', 'pro_user', 'jobtitle'],
+        inputs: ids.map(id => ({ id })),
+      })
+    )
+  );
+
+  return results
+    .flatMap(r => r.status === 'fulfilled' ? (r.value.results ?? []) : [])
+    .filter((c: { properties: Record<string, string | null> }) =>
+      c.properties.pro_user === 'true' || c.properties.pro_user === 'yes'
+    )
+    .map((c: { id: string; properties: Record<string, string | null> }) => ({
       id: c.id,
       name: [c.properties.firstname, c.properties.lastname].filter(Boolean).join(' '),
       email: c.properties.email ?? '',
@@ -444,12 +529,17 @@ async function hubspotGet(path: string) {
   return res.json();
 }
 
-async function hubspotPost(path: string, body: unknown) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function hubspotPost(path: string, body: unknown, attempt = 0): Promise<any> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify(body),
   });
+  if (res.status === 429 && attempt < 3) {
+    await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+    return hubspotPost(path, body, attempt + 1);
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`HubSpot POST ${path} failed: ${res.status} ${text}`);

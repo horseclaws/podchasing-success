@@ -3,11 +3,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const tabs = [
-  { href: '/client-health', label: 'Client Health' },
-  { href: '/chart-history', label: 'Chart History' },
-  { href: '/guest-finder', label: 'Guest Finder' },
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/team', label: 'Team' },
+  { href: '/client-health', label: 'Health Reports' },
+  { href: '/chart-history', label: 'Chart History' },
+  { href: '/guest-finder', label: 'Find Me Podcasts' },
+  { href: '/team', label: 'Settings' },
 ];
 
 export default function NavTabs() {
@@ -17,7 +17,7 @@ export default function NavTabs() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center gap-1 h-14">
           <span className="text-sm font-semibold tracking-tight mr-6 text-white/85">
-            Podchaser Intelligence
+            P.E.R.C.Y
           </span>
           {tabs.map((tab) => {
             const active = pathname.startsWith(tab.href);
