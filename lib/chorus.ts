@@ -78,6 +78,25 @@ async function fetchEngagementsByRep(repEmail: string, limit: number): Promise<A
   return filtered.slice(0, limit);
 }
 
+/** Returns raw fields from the first engagement — used to identify correct field names for filtering */
+export async function debugEngagementFields(): Promise<Record<string, unknown>> {
+  const params = new URLSearchParams({ engagement_type: 'meeting', limit: '1' });
+  const data = await chorusGetV3(`/engagements?${params}`);
+  const all: Array<Record<string, unknown>> = data.engagements ?? data.results ?? [];
+  if (all.length === 0) return { _note: 'no engagements returned' };
+  const e = all[0];
+  // Return all top-level keys and the first participant entry so we can see the shape
+  return {
+    _topLevelKeys: Object.keys(e),
+    owner_email: e.owner_email,
+    host_email: e.host_email,
+    created_by_email: e.created_by_email,
+    user_email: e.user_email,
+    participants: Array.isArray(e.participants) ? e.participants.slice(0, 2) : e.participants,
+    title: e.title ?? e.name,
+  };
+}
+
 export interface ChorusCallMeta {
   id: string;
   title: string;
