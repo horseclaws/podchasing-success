@@ -52,7 +52,7 @@ async function searchQA(
 
 function stripThinkBlock(text: string): string {
   // Synthesis answer lives AFTER </think>
-  const afterThink = text.replace(/.*?<\/think>\s*/s, '');
+  const afterThink = text.replace(/[\s\S]*?<\/think>\s*/, '');
   if (afterThink.trim()) return afterThink.trim();
   // Fallback: answer was inside the think block — strip tags, keep content
   return text.replace(/<\/?think>/g, '').trim();
