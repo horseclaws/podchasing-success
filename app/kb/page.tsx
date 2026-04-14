@@ -171,8 +171,9 @@ export default function KBPage() {
             What do you want to know?
           </label>
           <textarea
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-brand-purple resize-none"
-            rows={2}
+            className="w-full rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-purple"
+            style={{ backgroundColor: '#1a0236', color: '#ffffff', border: '1px solid rgba(255,255,255,0.2)' }}
+            rows={3}
             placeholder="e.g. how do clients use power score for outreach?"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
