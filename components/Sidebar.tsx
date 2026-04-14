@@ -8,6 +8,7 @@ const tabs = [
   { href: '/call-review', label: 'Call Review' },
   { href: '/chart-history', label: 'Chart History' },
   { href: '/guest-finder', label: 'Find Me Podcasts' },
+  { href: '/kb', label: 'Ask the KB' },
   { href: '/team', label: 'Settings' },
 ];
 
