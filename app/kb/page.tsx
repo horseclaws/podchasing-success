@@ -74,24 +74,25 @@ function TopicPill({ topic }: { topic: string }) {
 function SourceCard({ source, index }: { source: KBSource; index: number }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+    <div className="rounded-xl p-4" style={{ backgroundColor: '#1a0236', border: '1px solid rgba(255,255,255,0.1)' }}>
       <div className="flex flex-wrap items-center gap-2 mb-2">
-        <span className="text-xs text-white/30 font-mono">#{index + 1}</span>
+        <span className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.3)' }}>#{index + 1}</span>
         <TopicPill topic={source.topic} />
         <SimilarityBadge score={source.similarity} />
-        <span className="text-xs text-white/40">{source.rep}</span>
+        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>{source.rep}</span>
         {source.stage && (
-          <span className="text-xs text-white/30 italic">{source.stage}</span>
+          <span className="text-xs italic" style={{ color: 'rgba(255,255,255,0.35)' }}>{source.stage}</span>
         )}
       </div>
-      <p className="text-sm text-white/80 font-medium mb-1">{source.question}</p>
-      <p className={`text-sm text-white/55 leading-relaxed ${!expanded ? 'line-clamp-2' : ''}`}>
+      <p className="text-sm font-medium mb-1" style={{ color: 'rgba(255,255,255,0.9)' }}>{source.question}</p>
+      <p className={`text-sm leading-relaxed ${!expanded ? 'line-clamp-2' : ''}`} style={{ color: 'rgba(255,255,255,0.6)' }}>
         {source.answer}
       </p>
       {source.answer && source.answer.length > 120 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="mt-1 text-xs text-brand-cyan hover:text-brand-cyan/80"
+          className="mt-1 text-xs"
+          style={{ color: '#0DAAC9' }}
         >
           {expanded ? 'Show less' : 'Show more'}
         </button>
@@ -237,8 +238,8 @@ export default function KBPage() {
 
             {/* Synthesized answer */}
             <div
-              className="rounded-2xl border border-brand-mint/20 p-6"
-              style={{ backgroundColor: 'rgba(43, 218, 159, 0.05)' }}
+              className="rounded-2xl p-6"
+              style={{ backgroundColor: '#1a0236', border: '1px solid rgba(43,218,159,0.25)' }}
             >
               <div className="flex items-center gap-2 mb-3">
                 <span
@@ -247,13 +248,13 @@ export default function KBPage() {
                 >
                   SYNTHESIZED ANSWER
                 </span>
-                <span className="text-xs text-white/30">
+                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
                   from {result.match_count} real call matches
                   {topic ? ` · ${topic}` : ''}
                   {rep ? ` · ${rep}` : ''}
                 </span>
               </div>
-              <p className="text-sm text-white/85 leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.9)' }}>
                 {result.answer}
               </p>
             </div>
@@ -261,7 +262,7 @@ export default function KBPage() {
             {/* Source Q&As */}
             {result.sources.length > 0 && (
               <div>
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-3">
+                <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.35)' }}>
                   Source Q&As — top {result.sources.length} matches
                 </h2>
                 <div className="space-y-3">
@@ -276,7 +277,7 @@ export default function KBPage() {
 
         {/* Empty state */}
         {!isLoading && !result && !error && (
-          <div className="text-center py-16 text-white/20 text-sm">
+          <div className="text-center py-16 text-sm" style={{ color: 'rgba(74,2,125,0.5)' }}>
             Search the knowledge base to get started
           </div>
         )}

@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { callMiniMax, stripThinkingTags } from '@/lib/minimax';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? 'https://swglpaakqmaqnqsrshrh.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_KEY!;
 const VOYAGE_KEY   = process.env.VOYAGE_API_KEY!;
-const MINIMAX_KEY  = process.env.MINIMAX_API_KEY!;
 
-const MINIMAX_ENDPOINT = 'https://api.minimaxi.chat/v1/chat/completions';
-const MINIMAX_MODEL    = 'MiniMax-M2.5-Lightning';
-const VOYAGE_MODEL     = 'voyage-3';
+const VOYAGE_MODEL = 'voyage-3';
 
 // ── Voyage AI: embed the query ────────────────────────────────────────────────
 
@@ -50,14 +48,6 @@ async function searchQA(
 
 // ── MiniMax: synthesize an answer ─────────────────────────────────────────────
 
-function stripThinkBlock(text: string): string {
-  // Synthesis answer lives AFTER </think>
-  const afterThink = text.replace(/[\s\S]*?<\/think>\s*/, '');
-  if (afterThink.trim()) return afterThink.trim();
-  // Fallback: answer was inside the think block — strip tags, keep content
-  return text.replace(/<\/?think>/g, '').trim();
-}
-
 async function synthesize(question: string, results: Record<string, unknown>[]): Promise<string> {
   if (!results.length) return 'No relevant Q&A pairs found for that question.';
 
@@ -81,21 +71,8 @@ Using only the information in those Q&As, write a clear, confident response the 
 - Keep it under 200 words
 - Do not make up product details not supported by the Q&As above`;
 
-  const res = await fetch(MINIMAX_ENDPOINT, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${MINIMAX_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model:       MINIMAX_MODEL,
-      messages:    [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens:  600,
-      stream:      false,
-    }),
-  });
-  if (!res.ok) throw new Error(`MiniMax error ${res.status}: ${await res.text()}`);
-  const json = await res.json();
-  const content: string = json.choices?.[0]?.message?.content ?? '';
-  return stripThinkBlock(content);
+  const raw = await callMiniMax(prompt);
+  return stripThinkingTags(raw);
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
