@@ -58,18 +58,20 @@ async function synthesize(question: string, results: Record<string, unknown>[]):
     )
     .join('');
 
-  const prompt = `You are a Podchaser Pro customer success assistant.
+  const prompt = `You are a Podchaser Pro customer success assistant. Answer using ONLY the information in the Q&A pairs below — do not add any details, features, or instructions that are not explicitly stated in those Q&As. If the Q&As don't cover something, leave it out entirely rather than filling in from general knowledge.
+
 A rep has asked: "${question}"
 
-Below are the ${results.length} most relevant Q&A pairs retrieved from real Podchaser client calls:
+Q&A pairs from real Podchaser client calls:
 ${qaBlock}
 
-Using only the information in those Q&As, write a clear, confident response the rep can use or adapt.
+Write a clear, confident response the rep can use or adapt. Rules:
+- Use only facts explicitly stated in the Q&As above — nothing else
 - Lead with the direct answer
-- If multiple Q&As cover the same point, synthesize them (don't repeat)
-- If there's variation between reps (e.g. different answers), note it
-- Keep it under 200 words
-- Do not make up product details not supported by the Q&As above`;
+- Synthesize repeated points (don't list them separately)
+- Note any variation between reps if present
+- Under 200 words
+- Plain text only — no markdown, no bullet points, no bold, no headers`;
 
   const raw = await callMiniMax(prompt);
   return stripThinkingTags(raw);
