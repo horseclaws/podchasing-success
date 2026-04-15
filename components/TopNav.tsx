@@ -1,5 +1,6 @@
 'use client';
 import { signOut } from 'next-auth/react';
+import { withBase } from '@/lib/basePath';
 
 export default function TopNav() {
   return (
@@ -10,7 +11,7 @@ export default function TopNav() {
         <span className="text-xs text-white/40 tracking-wide">Proactive Engagement &amp; Relationship Companion for You</span>
       </div>
       <button
-        onClick={() => signOut({ callbackUrl: '/login' })}
+        onClick={() => signOut({ callbackUrl: withBase('/login') })}
         className="text-sm text-white/60 hover:text-white transition-colors duration-150"
       >
         Log out

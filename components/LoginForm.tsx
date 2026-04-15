@@ -1,14 +1,13 @@
 'use client';
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { withBase } from '@/lib/basePath';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,7 +22,7 @@ export default function LoginForm() {
       if (result?.error) {
         setError('Invalid email or password.');
       } else {
-        window.location.href = '/dashboard';
+        window.location.href = withBase('/dashboard');
       }
     } catch {
       setError('Something went wrong. Please try again.');

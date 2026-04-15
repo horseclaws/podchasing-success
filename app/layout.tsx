@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import TopNav from '@/components/TopNav';
 import Sidebar from '@/components/Sidebar';
+import FetchBasePathPatch from '@/components/FetchBasePathPatch';
 import { auth } from '@/lib/auth';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -17,6 +18,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body className={`${inter.className} min-h-screen bg-background`}>
+        <FetchBasePathPatch />
         {session ? (
           <>
             <TopNav />

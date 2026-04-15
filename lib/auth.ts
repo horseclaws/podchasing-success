@@ -2,6 +2,7 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { sql } from '@/lib/db';
+import { withBase } from '@/lib/basePath';
 
 export interface AppUser {
   id: string;
@@ -21,6 +22,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  basePath: '/api/auth',
   providers: [
     Credentials({
       credentials: {
@@ -81,5 +83,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   session: { strategy: 'jwt', maxAge: 7 * 24 * 60 * 60 },
-  pages: { signIn: '/login' },
+  pages: { signIn: withBase('/login') },
 });
